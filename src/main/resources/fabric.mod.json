@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "polycraftingtable",
+  "version": "${version}",
+  "name": "Polymer Crafting Table",
+  "description": "A dedicated crafting station and Polydex lookup for Polymer-backed crafting recipes.",
+  "authors": ["polycraftingtable contributors"],
+  "license": "GPL-3.0-only",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "dev.dragongamer112.polycraftingtable.PolyCraftingTableMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*",
+    "polymer-core": "*",
+    "polydex": "*"
+  }
+}
