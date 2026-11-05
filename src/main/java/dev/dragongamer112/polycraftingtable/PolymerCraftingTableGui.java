@@ -156,6 +156,43 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     @Override
+    public ItemStack quickMove(int index) {
+        if (index != RESULT_SLOT) {
+            return super.quickMove(index);
+        }
+
+        Slot resultSlot = this.wrappedMenu.getSlot(RESULT_SLOT);
+        if (!resultSlot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack output = resultSlot.getItem().copy();
+        if (!this.canFitOutput(output)) {
+            return ItemStack.EMPTY;
+        }
+
+        resultSlot.onTake(this.player, output);
+        this.player.getInventory().placeItemBackInInventory(output.copy(), Prediction.SERVER_ONLY);
+        return output;
+    }
+
+    private boolean canFitOutput(ItemStack output) {
+        int remaining = output.getCount();
+        var inventory = this.player.getInventory();
+        int slotLimit = Math.min(output.getMaxStackSize(), inventory.getMaxStackSize());
+
+        for (int slot = 0; slot < 36 && remaining > 0; slot++) {
+            ItemStack existing = inventory.getItem(slot);
+            if (existing.isEmpty()) {
+                remaining -= slotLimit;
+            } else if (ItemStack.isSameItemSameComponents(existing, output)) {
+                remaining -= Math.max(0, slotLimit - existing.getCount());
+            }
+        }
+        return remaining <= 0;
+    }
+
+    @Override
     public void onTick() {
         if (this.player.position().distanceToSqr(Vec3.atCenterOf(this.pos)) > 18 * 18
                 || !this.player.level().getBlockState(this.pos).is(PolyCraftingTableMod.TABLE)) {
