@@ -85,7 +85,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private static GuiElementBuilder filler() {
-        return new GuiElementBuilder(Items.GRAY_STAINED_GLASS_PANE)
+        return new GuiElementBuilder(Items.GLASS_PANE)
                 .setName(Component.empty())
                 .hideDefaultTooltip();
     }
