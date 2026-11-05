@@ -1,4 +1,5 @@
 {
   "block.polycraftingtable.polymer_crafting_table": "Polymer Crafting Table",
-  "polydex.category.polycraftingtable.polymer_crafting": "Polymer Crafting"
+  "gui.polycraftingtable.crafting_arrow": "Crafting",
+  "gui.polycraftingtable.polydex_button": "Open Polydex"
 }

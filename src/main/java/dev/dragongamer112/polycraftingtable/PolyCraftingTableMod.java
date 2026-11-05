@@ -1,6 +1,5 @@
 package dev.dragongamer112.polycraftingtable;
 
-import eu.pb4.polydex.api.v1.recipe.PolydexPageUtils;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.minecraft.core.BlockPos;
@@ -17,7 +16,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.phys.BlockHitResult;
 import eu.pb4.polymer.core.api.item.PolymerBlockItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +44,6 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        PolymerCraftingRecipePage.register();
         CreativeModeTabEvents.modifyOutputEvent(
                 CreativeModeTabs.FUNCTIONAL_BLOCKS
         ).register(entries -> entries.accept(TABLE_ITEM));
@@ -54,22 +51,11 @@ public final class PolyCraftingTableMod implements ModInitializer {
         LOGGER.info("Polymer Crafting Table initialized.");
     }
 
-    static InteractionResult openRecipeLookup(ServerPlayer player, BlockPos pos, BlockHitResult hit) {
-        if (!PolydexPageUtils.isReady()) {
+    static void openPolydexMenu(ServerPlayer player) {
+        if (!PolydexMenu.openMainMenu(player)) {
             player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
-                    "Polydex is still loading recipes. Try again in a moment."
+                    "Polydex is not ready yet. Try again in a moment."
             ));
-            return InteractionResult.SUCCESS_SERVER;
         }
-        if (PolydexPageUtils.openCategoryUi(player, PolymerCraftingRecipePage.CATEGORY, null)) {
-            return InteractionResult.SUCCESS_SERVER;
-        }
-
-        player.sendOverlayMessage(
-                net.minecraft.network.chat.Component.literal(
-                        "No Polymer crafting recipes were detected. Check the recipe page count in the server log."
-                )
-        );
-        return InteractionResult.SUCCESS_SERVER;
     }
 }

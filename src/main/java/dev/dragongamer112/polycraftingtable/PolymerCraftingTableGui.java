@@ -1,28 +1,24 @@
 package dev.dragongamer112.polycraftingtable;
 
+import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundPlaceGhostRecipePacket;
-import net.minecraft.util.Prediction;
-import net.minecraft.recipebook.ServerPlaceRecipe;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Container;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -30,6 +26,10 @@ import java.util.List;
 import java.util.Optional;
 
 final class PolymerCraftingTableGui extends SimpleGui {
+    private static final int[] INPUT_SLOTS = {0, 1, 2, 9, 10, 11, 18, 19, 20};
+    private static final int RESULT_SLOT = 14;
+    private static final int POLYDEX_SLOT = 8;
+
     private final BlockPos pos;
     private final ResultContainer result = new ResultContainer();
     private final SimpleContainer input = new SimpleContainer(9) {
@@ -41,10 +41,29 @@ final class PolymerCraftingTableGui extends SimpleGui {
     };
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
-        super(MenuType.CRAFTING, player, false);
+        super(MenuType.GENERIC_9x3, player, false);
         this.pos = pos;
         this.setTitle(Component.translatable("block.polycraftingtable.polymer_crafting_table"));
-        this.setSlot(0, new Slot(this.result, 0, 0, 0) {
+
+        for (int slot = 0; slot < 27; slot++) {
+            this.setSlot(slot, filler());
+        }
+
+        this.setSlot(4, new GuiElementBuilder(Items.ARROW)
+                .setName(Component.translatable("gui.polycraftingtable.crafting_arrow"))
+                .hideDefaultTooltip()
+                .build());
+        this.setSlot(POLYDEX_SLOT, new GuiElementBuilder(Items.KNOWLEDGE_BOOK)
+                .setName(Component.translatable("gui.polycraftingtable.polydex_button"))
+                .setCallback(() -> PolyCraftingTableMod.openPolydexMenu(this.player))
+                .build());
+
+        for (int inputIndex = 0; inputIndex < INPUT_SLOTS.length; inputIndex++) {
+            int index = inputIndex;
+            this.setSlot(INPUT_SLOTS[index], new Slot(this.input, index, 0, 0));
+        }
+
+        this.setSlot(RESULT_SLOT, new Slot(this.result, 0, 0, 0) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
@@ -62,11 +81,13 @@ final class PolymerCraftingTableGui extends SimpleGui {
             }
         });
 
-        for (int slot = 0; slot < 9; slot++) {
-            this.setSlot(slot + 1, new Slot(this.input, slot, 0, 0));
-        }
-
         this.open();
+    }
+
+    private static GuiElementBuilder filler() {
+        return new GuiElementBuilder(Items.GRAY_STAINED_GLASS_PANE)
+                .setName(Component.empty())
+                .hideDefaultTooltip();
     }
 
     private CraftingInput craftingInput() {
@@ -84,12 +105,8 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .byType(RecipeType.CRAFTING);
         return recipes.stream()
                 .filter(holder -> holder.value().matches(input, this.player.level()))
-                .filter(holder -> isPolymerResult(holder.value().assemble(input)))
+                .filter(holder -> PolymerRecipes.isPolymerOutput(holder.value().assemble(input)))
                 .findFirst();
-    }
-
-    private static boolean isPolymerResult(ItemStack stack) {
-        return PolymerRecipes.isPolymerOutput(stack);
     }
 
     private void updateResult() {
@@ -122,10 +139,9 @@ final class PolymerCraftingTableGui extends SimpleGui {
         }
 
         for (ItemStack remainder : remainders) {
-            if (remainder.isEmpty()) {
-                continue;
+            if (!remainder.isEmpty()) {
+                player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
             }
-            player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
         }
 
         player.level().playSound(
@@ -137,58 +153,6 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 1.0F
         );
         this.updateResult();
-    }
-
-    @Override
-    public void onCraftRequest(RecipeDisplayId recipeId, boolean shift) {
-        var display = this.player.level().getServer().getRecipeManager().getRecipeFromDisplay(recipeId);
-        if (display == null || !(display.parent().value() instanceof CraftingRecipe craftingRecipe)) {
-            return;
-        }
-
-        RecipeHolder<CraftingRecipe> selected = (RecipeHolder<CraftingRecipe>) display.parent();
-        if (!PolymerRecipes.isPolymerDisplay(display.display().display(), this.player.level())) {
-            return;
-        }
-
-        RecipeBookMenu.PostPlaceAction action = ServerPlaceRecipe.placeRecipe(
-                new ServerPlaceRecipe.CraftingMenuAccess<>() {
-                    @Override
-                    public void fillCraftSlotsStackedContents(StackedItemContents finder) {
-                        for (int slot = 0; slot < 9; slot++) {
-                            finder.accountStack(PolymerCraftingTableGui.this.input.getItem(slot));
-                        }
-                    }
-
-                    @Override
-                    public void clearCraftingContent() {
-                    }
-
-                    @Override
-                    public boolean recipeMatches(RecipeHolder<CraftingRecipe> recipe) {
-                        CraftingInput input = PolymerCraftingTableGui.this.craftingInput();
-                        return recipe.value().matches(input, player.level())
-                                && isPolymerResult(recipe.value().assemble(input));
-                    }
-                },
-                3,
-                3,
-                this.wrappedMenu.slots.subList(1, 10),
-                this.wrappedMenu.slots.subList(1, 10),
-                this.player.getInventory(),
-                selected,
-                false,
-                false
-        );
-
-        if (action == RecipeBookMenu.PostPlaceAction.PLACE_GHOST_RECIPE) {
-            this.player.connection.send(
-                    new ClientboundPlaceGhostRecipePacket(
-                            this.player.containerMenu.containerId,
-                            display.display().display()
-                    )
-            );
-        }
     }
 
     @Override
@@ -204,10 +168,9 @@ final class PolymerCraftingTableGui extends SimpleGui {
     @Override
     public void onPlayerClose(boolean success) {
         for (ItemStack stack : this.input.getItems()) {
-            if (stack.isEmpty()) {
-                continue;
+            if (!stack.isEmpty()) {
+                this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
             }
-            this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
         }
         this.input.clearContent();
         super.onPlayerClose(success);
