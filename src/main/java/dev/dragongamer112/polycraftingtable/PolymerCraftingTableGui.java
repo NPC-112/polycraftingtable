@@ -22,7 +22,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.phys.Vec3;
@@ -34,8 +33,6 @@ import java.util.Optional;
 final class PolymerCraftingTableGui extends SimpleGui {
     private final BlockPos pos;
     private final ResultContainer result = new ResultContainer();
-    private final RecipeManager.CachedCheck<CraftingInput, CraftingRecipe> recipeCheck =
-            RecipeManager.createCheck(RecipeType.CRAFTING);
     private final SimpleContainer input = new SimpleContainer(9) {
         @Override
         public void setChanged() {
@@ -82,8 +79,14 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private Optional<RecipeHolder<CraftingRecipe>> polymerRecipe(CraftingInput input) {
-        return this.recipeCheck.getRecipeFor(input, this.player.level())
-                .filter(holder -> isPolymerResult(holder.value().assemble(input)));
+        var recipes = ((dev.dragongamer112.polycraftingtable.mixin.RecipeManagerAccessor)
+                this.player.level().getServer().getRecipeManager())
+                .polycraftingtable$getRecipes()
+                .byType(RecipeType.CRAFTING);
+        return recipes.stream()
+                .filter(holder -> holder.value().matches(input, this.player.level()))
+                .filter(holder -> isPolymerResult(holder.value().assemble(input)))
+                .findFirst();
     }
 
     private static boolean isPolymerResult(ItemStack stack) {

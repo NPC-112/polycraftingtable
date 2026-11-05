@@ -9,7 +9,7 @@ Custom crafting table for Minecraft Polymer mods. Developed specifically to redu
 - Sneak-right-click opens a dedicated Polydex category containing crafting recipes whose output implements Polymer's `PolymerItem`.
 - GitHub Actions builds the mod on Java 25 for Minecraft 26.3 and stores the JAR as a workflow artifact.
 
-The current prototype reads the server's normal crafting recipes and filters what this table can craft. It does not yet remove those recipes from vanilla crafting or reduce the initial recipe-sync payload. Recipes are selected by their output implementing Polymer's `PolymerItem`; recipes with other output types are not included automatically.
+Recipes are selected by their output implementing Polymer's `PolymerItem`; recipes with other output types are not included automatically. Ordinary crafting result lookup is blocked for those recipes, while the custom table matches them directly. The server still sends recipe displays during initial sync, so this prototype does not yet reduce the recipe-sync payload.
 
 ## Build
 
