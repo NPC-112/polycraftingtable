@@ -1,8 +1,6 @@
 package dev.dragongamer112.polycraftingtable.mixin;
 
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CraftingRecipe;
+import dev.dragongamer112.polycraftingtable.PolymerRecipes;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
@@ -10,14 +8,11 @@ import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.resources.ResourceKey;
-import eu.pb4.polymer.core.api.item.PolymerItem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 @Mixin(RecipeManager.class)
@@ -33,7 +28,7 @@ public abstract class RecipeManagerMixin {
             Level level,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(cir);
+        filterResult(input, cir);
     }
 
     @Inject(
@@ -48,7 +43,7 @@ public abstract class RecipeManagerMixin {
             ResourceKey<Recipe<?>> recipeHint,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(cir);
+        filterResult(input, cir);
     }
 
     @Inject(
@@ -63,35 +58,17 @@ public abstract class RecipeManagerMixin {
             RecipeHolder<T> recipeHint,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(cir);
+        filterResult(input, cir);
     }
 
-    private static void filterResult(CallbackInfoReturnable<?> cir) {
-        Object result = cir.getReturnValue();
-        if (!(result instanceof Optional<?> optional)
-                || optional.isEmpty()
-                || !(optional.get() instanceof RecipeHolder<?> holder)
-                || !(holder.value() instanceof CraftingRecipe recipe)) {
-            return;
+    private static <I extends RecipeInput, T extends Recipe<I>> void filterResult(
+            I input, CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
+    ) {
+        var result = cir.getReturnValue();
+        if (result.isPresent()
+                && result.get().value().getType().equals(RecipeType.CRAFTING)
+                && PolymerRecipes.isPolymerOutput(result.get().value().assemble(input))) {
+            cir.setReturnValue(Optional.empty());
         }
-
-        CraftingInput emptyInput = CraftingInput.of(3, 3, emptyGrid());
-        ItemStack output = recipe.assemble(emptyInput);
-        if (!output.isEmpty() && output.getItem() instanceof PolymerItem) {
-            setEmpty(cir);
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void setEmpty(CallbackInfoReturnable<?> cir) {
-        ((CallbackInfoReturnable) cir).setReturnValue(Optional.empty());
-    }
-
-    private static List<ItemStack> emptyGrid() {
-        List<ItemStack> stacks = new ArrayList<>(9);
-        for (int slot = 0; slot < 9; slot++) {
-            stacks.add(ItemStack.EMPTY);
-        }
-        return stacks;
     }
 }

@@ -1,6 +1,5 @@
 package dev.dragongamer112.polycraftingtable;
 
-import eu.pb4.polymer.core.api.item.PolymerItem;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -90,7 +89,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private static boolean isPolymerResult(ItemStack stack) {
-        return !stack.isEmpty() && stack.getItem() instanceof PolymerItem;
+        return PolymerRecipes.isPolymerOutput(stack);
     }
 
     private void updateResult() {
@@ -148,7 +147,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
         }
 
         RecipeHolder<CraftingRecipe> selected = (RecipeHolder<CraftingRecipe>) display.parent();
-        if (!isPolymerResult(craftingRecipe.assemble(this.craftingInput()))) {
+        if (!PolymerRecipes.isPolymerDisplay(display.display().display(), this.player.level())) {
             return;
         }
 
@@ -168,8 +167,8 @@ final class PolymerCraftingTableGui extends SimpleGui {
                     @Override
                     public boolean recipeMatches(RecipeHolder<CraftingRecipe> recipe) {
                         CraftingInput input = PolymerCraftingTableGui.this.craftingInput();
-                        return isPolymerResult(recipe.value().assemble(input))
-                                && recipe.value().matches(input, player.level());
+                        return recipe.value().matches(input, player.level())
+                                && isPolymerResult(recipe.value().assemble(input));
                     }
                 },
                 3,

@@ -55,12 +55,20 @@ public final class PolyCraftingTableMod implements ModInitializer {
     }
 
     static InteractionResult openRecipeLookup(ServerPlayer player, BlockPos pos, BlockHitResult hit) {
+        if (!PolydexPageUtils.isReady()) {
+            player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
+                    "Polydex is still loading recipes. Try again in a moment."
+            ));
+            return InteractionResult.SUCCESS_SERVER;
+        }
         if (PolydexPageUtils.openCategoryUi(player, PolymerCraftingRecipePage.CATEGORY, null)) {
             return InteractionResult.SUCCESS_SERVER;
         }
 
         player.sendOverlayMessage(
-                net.minecraft.network.chat.Component.literal("Polydex has no crafting recipes available.")
+                net.minecraft.network.chat.Component.literal(
+                        "No Polymer crafting recipes were detected. Check the recipe page count in the server log."
+                )
         );
         return InteractionResult.SUCCESS_SERVER;
     }
