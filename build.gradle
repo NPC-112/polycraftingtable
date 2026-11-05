@@ -26,9 +26,9 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-    modCompileOnly "eu.pb4:polymer-core:${project.polymer_version}"
-    modCompileOnly "eu.pb4:sgui:${project.sgui_version}"
-    modCompileOnly "maven.modrinth:polydex:${project.polydex_version}"
+    compileOnly "eu.pb4:polymer-core:${project.polymer_version}"
+    compileOnly "eu.pb4:sgui:${project.sgui_version}"
+    compileOnly "maven.modrinth:polydex:${project.polydex_version}"
 }
 
 processResources {
