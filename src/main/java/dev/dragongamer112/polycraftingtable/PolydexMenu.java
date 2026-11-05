@@ -14,7 +14,6 @@ final class PolydexMenu {
             return false;
         }
 
-        new MainIndexGui(player, -1).open();
-        return true;
+        return new MainIndexGui(player, -1).open();
     }
 }
