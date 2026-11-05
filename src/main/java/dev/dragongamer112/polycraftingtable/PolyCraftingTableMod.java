@@ -1,6 +1,5 @@
 package dev.dragongamer112.polycraftingtable;
 
-import eu.pb4.polydex.api.v1.recipe.PolydexCategory;
 import eu.pb4.polydex.api.v1.recipe.PolydexPageUtils;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
@@ -47,6 +46,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        PolymerCraftingRecipePage.register();
         CreativeModeTabEvents.modifyOutputEvent(
                 CreativeModeTabs.FUNCTIONAL_BLOCKS
         ).register(entries -> entries.accept(TABLE_ITEM));
@@ -55,7 +55,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
     }
 
     static InteractionResult openRecipeLookup(ServerPlayer player, BlockPos pos, BlockHitResult hit) {
-        if (PolydexPageUtils.openCategoryUi(player, PolydexCategory.CRAFTING, null)) {
+        if (PolydexPageUtils.openCategoryUi(player, PolymerCraftingRecipePage.CATEGORY, null)) {
             return InteractionResult.SUCCESS_SERVER;
         }
 
