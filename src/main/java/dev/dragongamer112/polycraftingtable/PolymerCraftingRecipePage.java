@@ -4,6 +4,7 @@ import eu.pb4.polydex.api.v1.recipe.AbstractRecipePolydexPage;
 import eu.pb4.polydex.api.v1.recipe.PageBuilder;
 import eu.pb4.polydex.api.v1.recipe.PolydexCategory;
 import eu.pb4.polydex.api.v1.recipe.PolydexEntry;
+import eu.pb4.polydex.api.v1.recipe.PolydexPage;
 import eu.pb4.polymer.core.api.item.PolymerItem;
 import dev.dragongamer112.polycraftingtable.mixin.RecipeManagerAccessor;
 import net.minecraft.resources.Identifier;
