@@ -5,6 +5,7 @@ import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundPlaceGhostRecipePacket;
+import net.minecraft.util.Prediction;
 import net.minecraft.recipebook.ServerPlaceRecipe;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -122,9 +123,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
             if (remainder.isEmpty()) {
                 continue;
             }
-            if (!player.getInventory().add(remainder)) {
-                player.drop(remainder, false);
-            }
+            player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
         }
 
         player.level().playSound(
@@ -184,7 +183,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
             this.player.connection.send(
                     new ClientboundPlaceGhostRecipePacket(
                             this.player.containerMenu.containerId,
-                            display.display()
+                            display.display().display()
                     )
             );
         }
@@ -206,10 +205,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
             if (stack.isEmpty()) {
                 continue;
             }
-            ItemStack leftover = stack.copy();
-            if (!this.player.getInventory().add(leftover)) {
-                this.player.drop(leftover, false);
-            }
+            this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
         }
         this.input.clearContent();
         super.onPlayerClose(success);

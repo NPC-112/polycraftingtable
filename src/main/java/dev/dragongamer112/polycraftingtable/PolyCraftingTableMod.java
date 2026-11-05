@@ -3,7 +3,7 @@ package dev.dragongamer112.polycraftingtable;
 import eu.pb4.polydex.api.v1.recipe.PolydexCategory;
 import eu.pb4.polydex.api.v1.recipe.PolydexPageUtils;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.itemgroup.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,7 +48,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
     @Override
     public void onInitialize() {
         CreativeModeTabEvents.modifyOutputEvent(
-                ResourceKey.create(Registries.CREATIVE_MODE_TAB, CreativeModeTabs.FUNCTIONAL_BLOCKS)
+                CreativeModeTabs.FUNCTIONAL_BLOCKS
         ).register(entries -> entries.accept(TABLE_ITEM));
 
         LOGGER.info("Polymer Crafting Table initialized.");
