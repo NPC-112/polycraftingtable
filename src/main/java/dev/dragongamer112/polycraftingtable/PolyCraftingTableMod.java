@@ -59,9 +59,8 @@ public final class PolyCraftingTableMod implements ModInitializer {
             return InteractionResult.SUCCESS_SERVER;
         }
 
-        player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal("Polydex has no crafting recipes available."),
-                true
+        player.sendOverlayMessage(
+                net.minecraft.network.chat.Component.literal("Polydex has no crafting recipes available.")
         );
         return InteractionResult.SUCCESS_SERVER;
     }
