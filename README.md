@@ -6,7 +6,9 @@ Custom crafting table for Minecraft Polymer mods. Developed specifically to redu
 
 - Loads on dedicated servers and in singleplayer (install the mod and its dependencies in the singleplayer instance).
 - Adds a server-driven Polymer crafting table that appears as a vanilla crafting table to unmodded remote clients.
-- Opens a dedicated 3×3 crafting screen for Polymer-backed crafting results, including items registered through Polymer adapters.
+- Opens a dedicated crafting screen with a Polydex-style 3×3 recipe layout for Polymer-backed results, including items registered through Polymer adapters.
+- Uses Polydex's textured crafting background and transparent slot model when the Polymer resource pack is accepted; otherwise it shows a readable vanilla fallback.
+- Treats the result as a craft button rather than a takeable item, so items with right-click actions cannot open another menu before the crafted output is safely delivered.
 - A knowledge-book button opens Polydex's main index. Sneak-right-clicking the table opens the same menu.
 - Excludes moved crafting displays from initial vanilla recipe-book sync and subsequent recipe unlock packets. Polydex and the custom table retain access to the full server recipe registry.
 - GitHub Actions builds the mod on Java 25 for Minecraft 26.3 and stores the JAR as a workflow artifact.
@@ -19,7 +21,9 @@ Ordinary crafting result lookup is blocked for moved recipes while the custom ta
 
 Use `/give @s polycraftingtable:polymer_crafting_table` as an operator. Place it and right-click to craft, or sneak-right-click with an empty hand for Polydex. The custom screen's knowledge-book button opens the same Polydex main index. Opening Polydex closes the crafting screen and returns its remaining ingredients to the player's inventory.
 
-The Polydex main-index integration uses an implementation class because the current Polydex release does not expose a public main-menu opener. That dependency is isolated in `PolydexMenu` and may need an update when changing Polydex versions.
+Accept the Polymer resource pack to see Polydex's crafting background and transparent slot models. Without the pack, the screen uses a plain title, glass-pane fillers, and a vanilla arrow. To check output safety, try normal and shift-clicks on an item whose right-click action opens another menu. Crafting should put the item in the inventory without opening that menu; using the item from the inventory should open it and return any remaining table inputs. If the output or its remainders will not fit, crafting should leave the recipe untouched and ask for inventory space.
+
+The Polydex main-index and screen-texture integrations use implementation classes because the current Polydex release does not expose public helpers for these entry points. Those dependencies may need an update when changing Polydex versions.
 
 The build is verified through GitHub Actions. In-game testing of dedicated-server and singleplayer behavior is still required.
 

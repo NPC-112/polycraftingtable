@@ -1,5 +1,11 @@
 package dev.dragongamer112.polycraftingtable;
 
+import eu.pb4.polydex.api.v1.recipe.PageTextures;
+import eu.pb4.polydex.impl.book.ui.ExtendedGui;
+import eu.pb4.polydex.impl.book.ui.GuiUtils;
+import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
+import eu.pb4.sgui.api.ClickType;
+import eu.pb4.sgui.api.elements.GuiElement;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.core.BlockPos;
@@ -10,8 +16,8 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Prediction;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -26,12 +32,12 @@ import java.util.List;
 import java.util.Optional;
 
 final class PolymerCraftingTableGui extends SimpleGui {
-    private static final int[] INPUT_SLOTS = {0, 1, 2, 9, 10, 11, 18, 19, 20};
-    private static final int RESULT_SLOT = 14;
-    private static final int POLYDEX_SLOT = 8;
+    private static final int[] INPUT_SLOTS = {11, 12, 13, 20, 21, 22, 29, 30, 31};
+    private static final int RESULT_SLOT = 24;
+    private static final int ARROW_SLOT = 23;
+    private static final int POLYDEX_SLOT = 53;
 
     private final BlockPos pos;
-    private final ResultContainer result = new ResultContainer();
     private final SimpleContainer input = new SimpleContainer(9) {
         @Override
         public void setChanged() {
@@ -41,21 +47,34 @@ final class PolymerCraftingTableGui extends SimpleGui {
     };
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
-        super(MenuType.GENERIC_9x3, player, false);
+        super(MenuType.GENERIC_9x6, player, false);
         this.pos = pos;
-        this.setTitle(Component.translatable("block.polycraftingtable.polymer_crafting_table"));
+        this.setTitle(ExtendedGui.formatTexturedText(
+                player,
+                PageTextures.CRAFTING,
+                null,
+                Component.literal("Polymer Crafting Table")
+        ));
 
-        for (int slot = 0; slot < 27; slot++) {
-            this.setSlot(slot, filler());
+        GuiElementBuilder filler = PolymerResourcePackUtils.hasMainPack(player)
+                ? GuiUtils.EMPTY_STACK
+                : GuiUtils.FILLER;
+        for (int slot = 0; slot < 54; slot++) {
+            this.setSlot(slot, filler.build());
         }
 
-        this.setSlot(4, new GuiElementBuilder(Items.ARROW)
-                .setName(Component.translatable("gui.polycraftingtable.crafting_arrow"))
-                .hideDefaultTooltip()
-                .build());
+        if (!PolymerResourcePackUtils.hasMainPack(player)) {
+            this.setSlot(ARROW_SLOT, new GuiElementBuilder(Items.ARROW)
+                    .setName(Component.literal("Crafting"))
+                    .hideDefaultTooltip()
+                    .build());
+        }
         this.setSlot(POLYDEX_SLOT, new GuiElementBuilder(Items.KNOWLEDGE_BOOK)
-                .setName(Component.translatable("gui.polycraftingtable.polydex_button"))
-                .setCallback(() -> PolyCraftingTableMod.openPolydexMenu(this.player))
+                .setName(Component.literal("Open Polydex"))
+                .setCallback(() -> {
+                    this.close();
+                    PolyCraftingTableMod.openPolydexMenu(this.player);
+                })
                 .build());
 
         for (int inputIndex = 0; inputIndex < INPUT_SLOTS.length; inputIndex++) {
@@ -63,31 +82,15 @@ final class PolymerCraftingTableGui extends SimpleGui {
             this.setSlot(INPUT_SLOTS[index], new Slot(this.input, index, 0, 0));
         }
 
-        this.setSlot(RESULT_SLOT, new Slot(this.result, 0, 0, 0) {
-            @Override
-            public boolean mayPlace(ItemStack stack) {
-                return false;
-            }
-
-            @Override
-            public boolean mayPickup(Player player) {
-                return !PolymerCraftingTableGui.this.result.getItem(0).isEmpty();
-            }
-
-            @Override
-            public void onTake(Player player, ItemStack stack) {
-                PolymerCraftingTableGui.this.craftOne(player);
-                super.onTake(player, stack);
-            }
-        });
+        this.updateResult();
 
         this.open();
     }
 
-    private static GuiElementBuilder filler() {
-        return new GuiElementBuilder(Items.GLASS_PANE)
-                .setName(Component.empty())
-                .hideDefaultTooltip();
+    private GuiElement filler() {
+        return PolymerResourcePackUtils.hasMainPack(this.player)
+                ? GuiUtils.EMPTY_STACK.build()
+                : GuiUtils.FILLER.build();
     }
 
     private CraftingInput craftingInput() {
@@ -114,7 +117,18 @@ final class PolymerCraftingTableGui extends SimpleGui {
         ItemStack output = this.polymerRecipe(craftingInput)
                 .map(holder -> holder.value().assemble(craftingInput))
                 .orElse(ItemStack.EMPTY);
-        this.result.setItem(0, output);
+        if (output.isEmpty()) {
+            this.setSlot(RESULT_SLOT, this.filler());
+            return;
+        }
+
+        this.setSlot(RESULT_SLOT, new GuiElementBuilder(output.copy())
+                .setCallback((index, clickType, action, gui) -> {
+                    if (action == ContainerInput.PICKUP || action == ContainerInput.QUICK_MOVE) {
+                        this.craftOne(this.player);
+                    }
+                })
+                .build());
     }
 
     private void craftOne(Player player) {
@@ -125,7 +139,18 @@ final class PolymerCraftingTableGui extends SimpleGui {
             return;
         }
 
+        ItemStack output = match.get().value().assemble(craftingInput);
+        if (output.isEmpty()) {
+            this.updateResult();
+            return;
+        }
+
         List<ItemStack> remainders = match.get().value().getRemainingItems(craftingInput);
+        if (!this.canFitCraft(output, remainders)) {
+            player.sendOverlayMessage(Component.literal("Make room in your inventory to craft this."));
+            return;
+        }
+
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = this.input.getItem(slot);
             if (!stack.isEmpty()) {
@@ -138,6 +163,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
             }
         }
 
+        player.getInventory().placeItemBackInInventory(output, Prediction.SERVER_ONLY);
         for (ItemStack remainder : remainders) {
             if (!remainder.isEmpty()) {
                 player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
@@ -155,41 +181,60 @@ final class PolymerCraftingTableGui extends SimpleGui {
         this.updateResult();
     }
 
-    @Override
-    public ItemStack quickMove(int index) {
-        if (index != RESULT_SLOT) {
-            return super.quickMove(index);
-        }
-
-        Slot resultSlot = this.wrappedMenu.getSlot(RESULT_SLOT);
-        if (!resultSlot.hasItem()) {
-            return ItemStack.EMPTY;
-        }
-
-        ItemStack output = resultSlot.getItem().copy();
-        if (!this.canFitOutput(output)) {
-            return ItemStack.EMPTY;
-        }
-
-        resultSlot.onTake(this.player, output);
-        this.player.getInventory().placeItemBackInInventory(output.copy(), Prediction.SERVER_ONLY);
-        return output;
-    }
-
-    private boolean canFitOutput(ItemStack output) {
-        int remaining = output.getCount();
+    private boolean canFitCraft(ItemStack output, List<ItemStack> remainders) {
         var inventory = this.player.getInventory();
-        int slotLimit = Math.min(output.getMaxStackSize(), inventory.getMaxStackSize());
+        List<ItemStack> simulatedInventory = new ArrayList<>(36);
+        for (int slot = 0; slot < 36; slot++) {
+            simulatedInventory.add(inventory.getItem(slot).copy());
+        }
 
-        for (int slot = 0; slot < 36 && remaining > 0; slot++) {
-            ItemStack existing = inventory.getItem(slot);
-            if (existing.isEmpty()) {
-                remaining -= slotLimit;
-            } else if (ItemStack.isSameItemSameComponents(existing, output)) {
-                remaining -= Math.max(0, slotLimit - existing.getCount());
+        List<ItemStack> results = new ArrayList<>(remainders.size() + 1);
+        results.add(output);
+        results.addAll(remainders);
+
+        for (ItemStack result : results) {
+            if (result.isEmpty()) {
+                continue;
+            }
+
+            ItemStack remaining = result.copy();
+            int slotLimit = Math.min(remaining.getMaxStackSize(), inventory.getMaxStackSize());
+            if (remaining.isStackable()) {
+                for (ItemStack existing : simulatedInventory) {
+                    if (!existing.isEmpty()
+                            && ItemStack.isSameItemSameComponents(existing, remaining)
+                            && existing.getCount() < slotLimit) {
+                        int moved = Math.min(remaining.getCount(), slotLimit - existing.getCount());
+                        existing.grow(moved);
+                        remaining.shrink(moved);
+                        if (remaining.isEmpty()) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (int slot = 0; slot < simulatedInventory.size() && !remaining.isEmpty(); slot++) {
+                if (simulatedInventory.get(slot).isEmpty()) {
+                    int moved = Math.min(remaining.getCount(), slotLimit);
+                    ItemStack inserted = remaining.copy();
+                    inserted.setCount(moved);
+                    simulatedInventory.set(slot, inserted);
+                    remaining.shrink(moved);
+                }
+            }
+
+            if (!remaining.isEmpty()) {
+                return false;
             }
         }
-        return remaining <= 0;
+
+        return true;
+    }
+
+    @Override
+    public boolean onClick(int index, ClickType clickType, ContainerInput action, GuiElement element) {
+        return index == RESULT_SLOT;
     }
 
     @Override
@@ -204,12 +249,14 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     @Override
     public void onPlayerClose(boolean success) {
-        for (ItemStack stack : this.input.getItems()) {
-            if (!stack.isEmpty()) {
-                this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
-            }
-        }
+        List<ItemStack> leftovers = this.input.getItems().stream()
+                .filter(stack -> !stack.isEmpty())
+                .map(ItemStack::copy)
+                .toList();
         this.input.clearContent();
+        for (ItemStack stack : leftovers) {
+            this.player.getInventory().placeItemBackInInventory(stack, Prediction.SERVER_ONLY);
+        }
         super.onPlayerClose(success);
     }
 }
