@@ -71,10 +71,10 @@ public final class PolydexMenu {
 
     public static void returnToTable(ServerPlayer player, CraftingRecipe recipe) {
         TableOrigin origin = TABLE_ORIGINS.get(player.getUUID());
-        if (origin == null || !isValidOrigin(player, origin)) {
+        if (origin == null || !isValidOrigin(player, origin) || !isPolydexMenu(player)) {
             TABLE_ORIGINS.remove(player.getUUID());
             player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
-                    "The Polymer Crafting Table is no longer available."
+                    "The originating table session is no longer available."
             ));
             return;
         }
