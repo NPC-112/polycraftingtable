@@ -30,10 +30,10 @@ dependencies {
     compileOnly "eu.pb4:sgui:${project.sgui_version}"
     compileOnly "maven.modrinth:polydex:${project.polydex_version}"
 
-    // Required by the GameTest server, which loads the mod just like a real server.
-    modRuntimeOnly "eu.pb4:polymer-core:${project.polymer_version}"
-    modRuntimeOnly "eu.pb4:sgui:${project.sgui_version}"
-    modRuntimeOnly "maven.modrinth:polydex:${project.polydex_version}"
+    // Available to local development and Fabric GameTest runs, but not bundled in the mod jar.
+    modLocalRuntime "eu.pb4:polymer-core:${project.polymer_version}"
+    modLocalRuntime "eu.pb4:sgui:${project.sgui_version}"
+    modLocalRuntime "maven.modrinth:polydex:${project.polydex_version}"
 }
 
 fabricApi {
