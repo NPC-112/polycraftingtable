@@ -77,7 +77,7 @@ abstract class PolydexPageViewerMixin {
             this.setSlot(49, this.filler());
         }
 
-        this.setSlot(50, new GuiElementBuilder(Items.LIME_DYE)
+        this.setSlot(50, new GuiElementBuilder(Items.EMERALD)
                 .setName(Component.literal("+ Fill crafting grid"))
                 .setCallback((index, clickType, action, gui) ->
                         PolydexMenu.returnToTable(player, recipe))

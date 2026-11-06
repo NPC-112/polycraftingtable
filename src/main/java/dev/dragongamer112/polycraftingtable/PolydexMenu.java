@@ -6,6 +6,7 @@ import eu.pb4.polydex.impl.book.ui.ExtendedGui;
 import eu.pb4.polydex.impl.book.ui.MainIndexGui;
 import eu.pb4.polydex.impl.book.view.crafting.AbstractCraftingRecipePage;
 import eu.pb4.sgui.api.containerwrappers.SlotBasedWrapperMenu;
+import dev.dragongamer112.polycraftingtable.mixin.PolydexRecipePageAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
@@ -20,7 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /** Keeps Polydex's implementation-level integrations and table-origin state together. */
-final class PolydexMenu {
+public final class PolydexMenu {
     private static final Map<UUID, TableOrigin> TABLE_ORIGINS = new HashMap<>();
 
     private PolydexMenu() {
@@ -50,7 +51,7 @@ final class PolydexMenu {
         return opened;
     }
 
-    static boolean hasValidTableOrigin(ServerPlayer player) {
+    public static boolean hasValidTableOrigin(ServerPlayer player) {
         TableOrigin origin = TABLE_ORIGINS.get(player.getUUID());
         if (origin == null || !isValidOrigin(player, origin) || !isPolydexMenu(player)) {
             TABLE_ORIGINS.remove(player.getUUID());
@@ -59,7 +60,7 @@ final class PolydexMenu {
         return true;
     }
 
-    static CraftingRecipe recipeForPage(PolydexPage page) {
+    public static CraftingRecipe recipeForPage(PolydexPage page) {
         if (!(page instanceof AbstractCraftingRecipePage<?>)
                 || !(page instanceof PolydexRecipePageAccessor accessor)) {
             return null;
@@ -68,7 +69,7 @@ final class PolydexMenu {
         return recipe instanceof CraftingRecipe craftingRecipe ? craftingRecipe : null;
     }
 
-    static void returnToTable(ServerPlayer player, CraftingRecipe recipe) {
+    public static void returnToTable(ServerPlayer player, CraftingRecipe recipe) {
         TableOrigin origin = TABLE_ORIGINS.get(player.getUUID());
         if (origin == null || !isValidOrigin(player, origin)) {
             TABLE_ORIGINS.remove(player.getUUID());
