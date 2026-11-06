@@ -100,20 +100,21 @@ final class PolymerCraftingTableGui extends SimpleGui {
         return CraftingInput.of(3, 3, stacks);
     }
 
-    private Optional<RecipeHolder<CraftingRecipe>> polymerRecipe(CraftingInput input) {
+    private Optional<RecipeHolder<CraftingRecipe>> matchingRecipe(CraftingInput input) {
         var recipes = ((dev.dragongamer112.polycraftingtable.mixin.RecipeManagerAccessor)
                 this.player.level().getServer().getRecipeManager())
                 .polycraftingtable$getRecipes()
                 .byType(RecipeType.CRAFTING);
+        // Read the complete registry directly: ordinary lookup intentionally hides
+        // Polymer results. Keep registry order for the same first-match priority.
         return recipes.stream()
                 .filter(holder -> holder.value().matches(input, this.player.level()))
-                .filter(holder -> PolymerRecipes.isPolymerOutput(holder.value().assemble(input)))
                 .findFirst();
     }
 
     private void updateResult() {
         CraftingInput craftingInput = this.craftingInput();
-        ItemStack output = this.polymerRecipe(craftingInput)
+        ItemStack output = this.matchingRecipe(craftingInput)
                 .map(holder -> holder.value().assemble(craftingInput))
                 .orElse(ItemStack.EMPTY);
         if (output.isEmpty()) {
@@ -132,7 +133,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     private void craftOne(Player player) {
         CraftingInput craftingInput = this.craftingInput();
-        Optional<RecipeHolder<CraftingRecipe>> match = this.polymerRecipe(craftingInput);
+        Optional<RecipeHolder<CraftingRecipe>> match = this.matchingRecipe(craftingInput);
         if (match.isEmpty()) {
             this.updateResult();
             return;

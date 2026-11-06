@@ -8,7 +8,7 @@ import net.minecraft.world.level.Level;
 
 import java.util.List;
 
-/** Shared selection rules for crafting, Polydex pages, and vanilla book sync. */
+/** Polymer detection for vanilla crafting lookup and recipe-book filtering. */
 public final class PolymerRecipes {
     private PolymerRecipes() {
     }
