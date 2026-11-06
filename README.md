@@ -9,6 +9,7 @@ Custom crafting table for Minecraft vanilla, modded, and Polymer recipes. Develo
 - Opens a dedicated crafting screen with a Polydex-style 3×3 layout for all registered crafting recipes: vanilla, ordinary modded, and Polymer-backed recipes.
 - Uses Polydex's textured crafting background and transparent slot model when the Polymer resource pack is accepted; otherwise it shows a readable vanilla fallback.
 - Treats the result as a craft button rather than a takeable item, so items with right-click actions cannot open another menu before the crafted output is safely delivered.
+- On each successful batch, records the crafted-item statistic, invokes the vanilla item crafting callback on a detached copy, triggers the recipe-crafted advancement, and unlocks non-special recipes through the outgoing recipe-book filter.
 - A knowledge-book button opens Polydex's main index. Sneak-right-clicking the table opens the same menu.
 - Excludes only Polymer-backed crafting displays from initial vanilla recipe-book sync and subsequent recipe unlock packets. Ordinary recipes remain available in the vanilla book; Polydex and the custom table retain access to the full server recipe registry.
 - GitHub Actions builds the mod on Java 25 for Minecraft 26.3 and stores the JAR as a workflow artifact.
@@ -28,6 +29,8 @@ Accept the Polymer resource pack to see Polydex's crafting background and transp
 For recipe coverage, test vanilla shaped recipes (such as a chest), shapeless recipes (such as planks), a special recipe (such as repairing two damaged tools), an ordinary mod recipe, and a Polymer-backed recipe in the custom table. Test a cake recipe to check bucket remainders, and repeat with a full inventory to confirm that a rejected craft consumes nothing. Vanilla and ordinary mod recipes should still work in the vanilla table and appear in its book when unlocked; Polymer-backed recipes should not. Polydex should continue to show all of them. Repeat on a dedicated server and in singleplayer.
 
 The Polydex main-index and screen-texture integrations use implementation classes because the current Polydex release does not expose public helpers for these entry points. Those dependencies may need an update when changing Polydex versions.
+
+Craft completion uses Minecraft's standard item callback, recipe-crafted advancement trigger, and recipe-book award APIs. It does not synthesize loader-specific crafting events or callbacks provided only by individual modded workstations; those hooks are not exposed through the shared Fabric crafting-recipe interface.
 
 The build is verified through GitHub Actions. In-game testing of dedicated-server and singleplayer behavior is still required.
 

@@ -14,7 +14,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Prediction;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
@@ -23,7 +22,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -92,30 +90,26 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 : GuiUtils.FILLER.build();
     }
 
-    private CraftingInput craftingInput() {
+    private List<ItemStack> inputSnapshot() {
         List<ItemStack> stacks = new ArrayList<>(9);
         for (int slot = 0; slot < 9; slot++) {
-            stacks.add(this.input.getItem(slot));
+            stacks.add(this.input.getItem(slot).copy());
         }
-        return CraftingInput.of(3, 3, stacks);
+        return stacks;
     }
 
     private Optional<RecipeHolder<CraftingRecipe>> matchingRecipe(CraftingInput input) {
-        var recipes = ((dev.dragongamer112.polycraftingtable.mixin.RecipeManagerAccessor)
-                this.player.level().getServer().getRecipeManager())
-                .polycraftingtable$getRecipes()
-                .byType(RecipeType.CRAFTING);
-        // Read the complete registry directly: ordinary lookup intentionally hides
-        // Polymer results. Keep registry order for the same first-match priority.
-        return recipes.stream()
-                .filter(holder -> holder.value().matches(input, this.player.level()))
-                .findFirst();
+        return CraftingRecipeLookup.matchingRecipe(
+                this.player.level().getServer().getRecipeManager(),
+                input,
+                this.player.level()
+        );
     }
 
     private void updateResult() {
-        CraftingInput craftingInput = this.craftingInput();
-        ItemStack output = this.matchingRecipe(craftingInput)
-                .map(holder -> holder.value().assemble(craftingInput))
+        List<ItemStack> inputSnapshot = this.inputSnapshot();
+        ItemStack output = this.matchingRecipe(craftingInput(inputSnapshot))
+                .map(holder -> holder.value().assemble(craftingInput(inputSnapshot)))
                 .orElse(ItemStack.EMPTY);
         if (output.isEmpty()) {
             this.setSlot(RESULT_SLOT, this.filler());
@@ -131,21 +125,30 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .build());
     }
 
-    private void craftOne(Player player) {
-        CraftingInput craftingInput = this.craftingInput();
-        Optional<RecipeHolder<CraftingRecipe>> match = this.matchingRecipe(craftingInput);
+    private void craftOne(ServerPlayer player) {
+        List<ItemStack> usedItems = this.inputSnapshot();
+
+        Optional<RecipeHolder<CraftingRecipe>> match = this.matchingRecipe(craftingInput(usedItems));
         if (match.isEmpty()) {
             this.updateResult();
             return;
         }
 
-        ItemStack output = match.get().value().assemble(craftingInput);
+        RecipeHolder<CraftingRecipe> recipe = match.get();
+        ItemStack output = recipe.value().assemble(craftingInput(usedItems));
         if (output.isEmpty()) {
             this.updateResult();
             return;
         }
 
-        List<ItemStack> remainders = match.get().value().getRemainingItems(craftingInput);
+        List<ItemStack> remainders = recipe.value().getRemainingItems(craftingInput(usedItems)).stream()
+                .map(ItemStack::copy)
+                .toList();
+        if (!this.inputMatches(usedItems)) {
+            this.updateResult();
+            return;
+        }
+
         if (!this.canFitCraft(output, remainders)) {
             player.sendOverlayMessage(Component.literal("Make room in your inventory to craft this."));
             return;
@@ -163,10 +166,11 @@ final class PolymerCraftingTableGui extends SimpleGui {
             }
         }
 
-        player.getInventory().placeItemBackInInventory(output, Prediction.SERVER_ONLY);
+        ItemStack craftedResult = output.copy();
+        player.getInventory().placeItemBackInInventory(output.copy(), Prediction.SERVER_ONLY);
         for (ItemStack remainder : remainders) {
             if (!remainder.isEmpty()) {
-                player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
+                player.getInventory().placeItemBackInInventory(remainder.copy(), Prediction.SERVER_ONLY);
             }
         }
 
@@ -179,6 +183,31 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 1.0F
         );
         this.updateResult();
+
+        // Complete the craft only after all inputs and outputs are safely committed.
+        // The detached stack prevents an item callback from changing the delivered result.
+        craftedResult.onCraftedBy(player, craftedResult.getCount());
+        player.triggerRecipeCrafted(recipe, usedItems);
+        if (!recipe.value().isSpecial()) {
+            // Keep recipe unlocks flowing through ServerRecipeBookMixin's outgoing filter.
+            player.awardRecipes(List.of(recipe));
+        }
+    }
+
+    private CraftingInput craftingInput(List<ItemStack> stacks) {
+        return CraftingInput.of(3, 3, stacks.stream().map(ItemStack::copy).toList());
+    }
+
+    private boolean inputMatches(List<ItemStack> expected) {
+        for (int slot = 0; slot < expected.size(); slot++) {
+            ItemStack actual = this.input.getItem(slot);
+            ItemStack original = expected.get(slot);
+            if (actual.getCount() != original.getCount()
+                    || !ItemStack.isSameItemSameComponents(actual, original)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean canFitCraft(ItemStack output, List<ItemStack> remainders) {
