@@ -1,8 +1,6 @@
 package dev.dragongamer112.polycraftingtable;
 
-import eu.pb4.polymer.core.api.item.PolymerItem;
 import eu.pb4.polymer.core.api.item.PolymerItemUtils;
-import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -227,14 +225,10 @@ public class CraftingRecipeGameTests {
                 "An ordinary crafting display should remain in the vanilla recipe book."
         );
 
-        PolymerItem.registerOverlay(
-                Items.BARRIER,
-                new SimplePolymerItem(new Item.Properties(), Items.BARRIER)
-        );
-        ItemStack polymerOutput = new ItemStack(Items.BARRIER);
+        ItemStack polymerOutput = new ItemStack(PolyCraftingTableMod.TABLE_ITEM);
         helper.assertTrue(
                 PolymerItemUtils.isPolymerServerItem(polymerOutput, null),
-                "The fixture should be recognized by Polymer as a server-side item."
+                "The registered custom table item should be recognized by Polymer as a server-side item."
         );
         helper.assertTrue(
                 !RecipeBookFilter.shouldIncludeCraftingDisplay(PolymerItemUtils.isPolymerServerItem(polymerOutput, null)),
