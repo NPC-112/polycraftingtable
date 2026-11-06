@@ -1,6 +1,7 @@
 package dev.dragongamer112.polycraftingtable.mixin;
 
 import dev.dragongamer112.polycraftingtable.PolymerRecipes;
+import dev.dragongamer112.polycraftingtable.RecipeBookFilter;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -31,7 +32,9 @@ public abstract class ServerRecipeBookMixin {
                 var info = manager.getRecipeFromDisplay(entry.contents().id());
                 return info == null
                         || !(info.parent().value() instanceof CraftingRecipe)
-                        || !PolymerRecipes.isPolymerDisplay(entry.contents().display(), player.level());
+                        || RecipeBookFilter.shouldIncludeCraftingDisplay(
+                                PolymerRecipes.isPolymerDisplay(entry.contents().display(), player.level())
+                        );
             }).toList();
             connection.send(new ClientboundRecipeBookAddPacket(entries, book.replace()));
         } else {

@@ -42,6 +42,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        PolydexMenu.initialize();
         CreativeModeTabEvents.modifyOutputEvent(
                 CreativeModeTabs.FUNCTIONAL_BLOCKS
         ).register(entries -> entries.accept(TABLE_ITEM));
@@ -49,8 +50,8 @@ public final class PolyCraftingTableMod implements ModInitializer {
         LOGGER.info("Polymer Crafting Table initialized.");
     }
 
-    static void openPolydexMenu(ServerPlayer player) {
-        if (!PolydexMenu.openMainMenu(player)) {
+    static void openPolydexMenu(ServerPlayer player, net.minecraft.core.BlockPos pos) {
+        if (!PolydexMenu.openMainMenu(player, pos)) {
             player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
                     "Polydex is not ready yet. Try again in a moment."
             ));

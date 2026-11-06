@@ -29,6 +29,21 @@ dependencies {
     compileOnly "eu.pb4:polymer-core:${project.polymer_version}"
     compileOnly "eu.pb4:sgui:${project.sgui_version}"
     compileOnly "maven.modrinth:polydex:${project.polydex_version}"
+
+    // Required by the GameTest server, which loads the mod just like a real server.
+    modRuntimeOnly "eu.pb4:polymer-core:${project.polymer_version}"
+    modRuntimeOnly "eu.pb4:sgui:${project.sgui_version}"
+    modRuntimeOnly "maven.modrinth:polydex:${project.polydex_version}"
+}
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "polycraftingtable-gametest"
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = true
+    }
 }
 
 processResources {

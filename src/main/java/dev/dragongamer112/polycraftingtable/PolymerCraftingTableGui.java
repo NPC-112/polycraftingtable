@@ -14,7 +14,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Prediction;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
@@ -23,7 +22,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -37,15 +35,22 @@ final class PolymerCraftingTableGui extends SimpleGui {
     private static final int POLYDEX_SLOT = 53;
 
     private final BlockPos pos;
+    private boolean suppressResultUpdate;
     private final SimpleContainer input = new SimpleContainer(9) {
         @Override
         public void setChanged() {
             super.setChanged();
-            PolymerCraftingTableGui.this.updateResult();
+            if (!PolymerCraftingTableGui.this.suppressResultUpdate) {
+                PolymerCraftingTableGui.this.updateResult();
+            }
         }
     };
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
+        this(player, pos, null);
+    }
+
+    PolymerCraftingTableGui(ServerPlayer player, BlockPos pos, CraftingRecipe autofillRecipe) {
         super(MenuType.GENERIC_9x6, player, false);
         this.pos = pos;
         this.setTitle(ExtendedGui.formatTexturedText(
@@ -72,7 +77,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .setName(Component.literal("Open Polydex"))
                 .setCallback(() -> {
                     this.close();
-                    PolyCraftingTableMod.openPolydexMenu(this.player);
+                    PolyCraftingTableMod.openPolydexMenu(this.player, this.pos);
                 })
                 .build());
 
@@ -81,9 +86,105 @@ final class PolymerCraftingTableGui extends SimpleGui {
             this.setSlot(INPUT_SLOTS[index], new Slot(this.input, index, 0, 0));
         }
 
-        this.updateResult();
+        if (autofillRecipe == null) {
+            this.updateResult();
+            this.open();
+        } else if (this.open()) {
+            this.autofillFromInventory(autofillRecipe);
+        }
+    }
 
-        this.open();
+    private void autofillFromInventory(CraftingRecipe recipe) {
+        var inventory = this.player.getInventory();
+        List<ItemStack> inventoryBefore = new ArrayList<>(36);
+        for (int slot = 0; slot < 36; slot++) {
+            inventoryBefore.add(inventory.getItem(slot).copy());
+        }
+
+        Optional<RecipeAutofill.Plan> planned = RecipeAutofill.plan(recipe, inventoryBefore);
+        if (planned.isEmpty()) {
+            this.updateResult();
+            this.player.sendOverlayMessage(Component.literal(
+                    "This recipe's ingredients cannot be autofilled safely."
+            ));
+            return;
+        }
+
+        RecipeAutofill.Plan plan = planned.get();
+        if (plan.filled() == 0) {
+            this.updateResult();
+            this.player.sendOverlayMessage(Component.literal(
+                    "No matching ingredients were available; the crafting grid was left empty."
+            ));
+            return;
+        }
+
+        if (!this.inventoryMatches(inventoryBefore)) {
+            this.updateResult();
+            this.player.sendOverlayMessage(Component.literal(
+                    "Your inventory changed before the recipe could be filled. Try again."
+            ));
+            return;
+        }
+
+        List<ItemStack> gridBefore = this.inputSnapshot();
+        this.suppressResultUpdate = true;
+        try {
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, plan.grid().get(slot).copy());
+            }
+            if (!this.inputMatches(plan.grid())) {
+                throw new IllegalStateException("Crafting grid rejected the planned recipe.");
+            }
+
+            for (int slot = 0; slot < 36; slot++) {
+                int count = plan.consumedByInventorySlot().get(slot);
+                if (count == 0) {
+                    continue;
+                }
+
+                ItemStack remaining = inventoryBefore.get(slot).copy();
+                remaining.shrink(count);
+                inventory.setItem(slot, remaining.isEmpty() ? ItemStack.EMPTY : remaining);
+            }
+        } catch (RuntimeException exception) {
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, gridBefore.get(slot).copy());
+            }
+            for (int slot = 0; slot < 36; slot++) {
+                inventory.setItem(slot, inventoryBefore.get(slot).copy());
+            }
+            this.suppressResultUpdate = false;
+            this.updateResult();
+            this.player.sendOverlayMessage(Component.literal(
+                    "The recipe could not be placed safely. No ingredients were consumed."
+            ));
+            return;
+        } finally {
+            this.suppressResultUpdate = false;
+        }
+
+        this.updateResult();
+        if (plan.filled() < plan.required()) {
+            this.player.sendOverlayMessage(Component.literal(
+                    "Filled " + plan.filled() + " of " + plan.required()
+                            + " ingredient slots; unavailable ingredients were left empty."
+            ));
+        } else {
+            this.player.sendOverlayMessage(Component.literal("Recipe filled from your inventory."));
+        }
+    }
+
+    private boolean inventoryMatches(List<ItemStack> expected) {
+        for (int slot = 0; slot < expected.size(); slot++) {
+            ItemStack actual = this.player.getInventory().getItem(slot);
+            ItemStack original = expected.get(slot);
+            if (actual.getCount() != original.getCount()
+                    || !ItemStack.isSameItemSameComponents(actual, original)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private GuiElement filler() {
@@ -92,30 +193,26 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 : GuiUtils.FILLER.build();
     }
 
-    private CraftingInput craftingInput() {
+    private List<ItemStack> inputSnapshot() {
         List<ItemStack> stacks = new ArrayList<>(9);
         for (int slot = 0; slot < 9; slot++) {
-            stacks.add(this.input.getItem(slot));
+            stacks.add(this.input.getItem(slot).copy());
         }
-        return CraftingInput.of(3, 3, stacks);
+        return stacks;
     }
 
     private Optional<RecipeHolder<CraftingRecipe>> matchingRecipe(CraftingInput input) {
-        var recipes = ((dev.dragongamer112.polycraftingtable.mixin.RecipeManagerAccessor)
-                this.player.level().getServer().getRecipeManager())
-                .polycraftingtable$getRecipes()
-                .byType(RecipeType.CRAFTING);
-        // Read the complete registry directly: ordinary lookup intentionally hides
-        // Polymer results. Keep registry order for the same first-match priority.
-        return recipes.stream()
-                .filter(holder -> holder.value().matches(input, this.player.level()))
-                .findFirst();
+        return CraftingRecipeLookup.matchingRecipe(
+                this.player.level().getServer().getRecipeManager(),
+                input,
+                this.player.level()
+        );
     }
 
     private void updateResult() {
-        CraftingInput craftingInput = this.craftingInput();
-        ItemStack output = this.matchingRecipe(craftingInput)
-                .map(holder -> holder.value().assemble(craftingInput))
+        List<ItemStack> inputSnapshot = this.inputSnapshot();
+        ItemStack output = this.matchingRecipe(craftingInput(inputSnapshot))
+                .map(holder -> holder.value().assemble(craftingInput(inputSnapshot)))
                 .orElse(ItemStack.EMPTY);
         if (output.isEmpty()) {
             this.setSlot(RESULT_SLOT, this.filler());
@@ -131,21 +228,30 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .build());
     }
 
-    private void craftOne(Player player) {
-        CraftingInput craftingInput = this.craftingInput();
-        Optional<RecipeHolder<CraftingRecipe>> match = this.matchingRecipe(craftingInput);
+    private void craftOne(ServerPlayer player) {
+        List<ItemStack> usedItems = this.inputSnapshot();
+
+        Optional<RecipeHolder<CraftingRecipe>> match = this.matchingRecipe(craftingInput(usedItems));
         if (match.isEmpty()) {
             this.updateResult();
             return;
         }
 
-        ItemStack output = match.get().value().assemble(craftingInput);
+        RecipeHolder<CraftingRecipe> recipe = match.get();
+        ItemStack output = recipe.value().assemble(craftingInput(usedItems));
         if (output.isEmpty()) {
             this.updateResult();
             return;
         }
 
-        List<ItemStack> remainders = match.get().value().getRemainingItems(craftingInput);
+        List<ItemStack> remainders = recipe.value().getRemainingItems(craftingInput(usedItems)).stream()
+                .map(ItemStack::copy)
+                .toList();
+        if (!this.inputMatches(usedItems)) {
+            this.updateResult();
+            return;
+        }
+
         if (!this.canFitCraft(output, remainders)) {
             player.sendOverlayMessage(Component.literal("Make room in your inventory to craft this."));
             return;
@@ -163,10 +269,11 @@ final class PolymerCraftingTableGui extends SimpleGui {
             }
         }
 
-        player.getInventory().placeItemBackInInventory(output, Prediction.SERVER_ONLY);
+        ItemStack craftedResult = output.copy();
+        player.getInventory().placeItemBackInInventory(output.copy(), Prediction.SERVER_ONLY);
         for (ItemStack remainder : remainders) {
             if (!remainder.isEmpty()) {
-                player.getInventory().placeItemBackInInventory(remainder, Prediction.SERVER_ONLY);
+                player.getInventory().placeItemBackInInventory(remainder.copy(), Prediction.SERVER_ONLY);
             }
         }
 
@@ -179,6 +286,31 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 1.0F
         );
         this.updateResult();
+
+        // Complete the craft only after all inputs and outputs are safely committed.
+        // The detached stack prevents an item callback from changing the delivered result.
+        craftedResult.onCraftedBy(player, craftedResult.getCount());
+        player.triggerRecipeCrafted(recipe, usedItems);
+        if (!recipe.value().isSpecial()) {
+            // Keep recipe unlocks flowing through ServerRecipeBookMixin's outgoing filter.
+            player.awardRecipes(List.of(recipe));
+        }
+    }
+
+    private CraftingInput craftingInput(List<ItemStack> stacks) {
+        return CraftingInput.of(3, 3, stacks.stream().map(ItemStack::copy).toList());
+    }
+
+    private boolean inputMatches(List<ItemStack> expected) {
+        for (int slot = 0; slot < expected.size(); slot++) {
+            ItemStack actual = this.input.getItem(slot);
+            ItemStack original = expected.get(slot);
+            if (actual.getCount() != original.getCount()
+                    || !ItemStack.isSameItemSameComponents(actual, original)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean canFitCraft(ItemStack output, List<ItemStack> remainders) {
