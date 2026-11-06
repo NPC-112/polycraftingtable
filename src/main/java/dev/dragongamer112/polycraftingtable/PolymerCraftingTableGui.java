@@ -3,7 +3,6 @@ package dev.dragongamer112.polycraftingtable;
 import eu.pb4.polydex.api.v1.recipe.PageTextures;
 import eu.pb4.polydex.impl.book.ui.ExtendedGui;
 import eu.pb4.polydex.impl.book.ui.GuiUtils;
-import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.sgui.api.ClickType;
 import eu.pb4.sgui.api.elements.GuiElement;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
@@ -56,14 +55,14 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 Component.literal("Polymer Crafting Table")
         ));
 
-        GuiElementBuilder filler = PolymerResourcePackUtils.hasMainPack(player)
+        GuiElementBuilder filler = GuiUtils.hasTexture(player)
                 ? GuiUtils.EMPTY_STACK
                 : GuiUtils.FILLER;
         for (int slot = 0; slot < 54; slot++) {
             this.setSlot(slot, filler.build());
         }
 
-        if (!PolymerResourcePackUtils.hasMainPack(player)) {
+        if (!GuiUtils.hasTexture(player)) {
             this.setSlot(ARROW_SLOT, new GuiElementBuilder(Items.ARROW)
                     .setName(Component.literal("Crafting"))
                     .hideDefaultTooltip()
@@ -88,7 +87,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private GuiElement filler() {
-        return PolymerResourcePackUtils.hasMainPack(this.player)
+        return GuiUtils.hasTexture(this.player)
                 ? GuiUtils.EMPTY_STACK.build()
                 : GuiUtils.FILLER.build();
     }
