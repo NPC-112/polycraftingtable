@@ -20,19 +20,13 @@ Polymer's server-item detection API selects which results are excluded from vani
 
 Ordinary crafting result lookup is blocked only for Polymer-backed results, while the custom table matches all crafting recipes directly. The recipes and player unlocks are never deleted; only outgoing Polymer-backed vanilla recipe-book entries are filtered. This reduces that packet's payload, not every registry or network packet.
 
-## Testing
+## Using the table
 
 Use `/give @s polycraftingtable:polymer_crafting_table` as an operator. Place it and right-click to craft, or sneak-right-click with an empty hand for Polydex. The custom screen's knowledge-book button opens the Polydex main index; opening it returns the table's remaining ingredients to the player's inventory. Recent Polydex item entries appear in the bottom row, with a blank non-clickable space before the Polydex button. Left-click an entry to fill the open crafting grid from inventory; supported shaped and shapeless recipes may be partially filled when ingredients are missing. If the grid already contains items, autofill refuses without changing the grid or inventory. Right-click an entry to open its Polydex recipe page.
-
-Accept the Polymer resource pack to see Polydex's crafting background and transparent slot model. Check the recent bar with empty and populated history, including an item with more than one visible crafting recipe and a stale or unsupported entry. Verify left-click fills without consuming unrelated items, an occupied grid remains unchanged with a message, and right-click opens the matching Polydex item page. Confirm the spacer matches surrounding unused slots, the Polydex button remains clickable, and Polydex page navigation works without injected controls. To check output safety, try normal and shift-clicks on an item whose right-click action opens another menu. Crafting should put the item in the inventory without opening that menu; using the item from the inventory should open it and return any remaining table inputs. If the output or its remainders will not fit, crafting should leave the recipe untouched and ask for inventory space.
-
-For recipe coverage, test vanilla shaped recipes (such as a chest), shapeless recipes (such as planks), a special recipe (such as repairing two damaged tools), an ordinary mod recipe, and a Polymer-backed recipe in the custom table. Test a cake recipe to check bucket remainders, and repeat with a full inventory to confirm that a rejected craft consumes nothing. Vanilla and ordinary mod recipes should still work in the vanilla table and appear in its book when unlocked; Polymer-backed recipes should not. Polydex should continue to show all of them. Repeat on a dedicated server and in singleplayer.
 
 The Polydex main-index, recipe-page, recent-entry, and screen-texture integrations use implementation classes because the current Polydex release does not expose public helpers for these entry points. Recent items are kept per connection by Polydex and are not persistent across reconnects. These dependencies may need an update when changing Polydex versions. The mod no longer injects controls into Polydex's own screens.
 
 Craft completion uses Minecraft's standard item callback, recipe-crafted advancement trigger, and recipe-book award APIs. It does not synthesize loader-specific crafting events or callbacks provided only by individual modded workstations; those hooks are not exposed through the shared Fabric crafting-recipe interface.
-
-The build is verified through GitHub Actions. In-game testing of dedicated-server and singleplayer behavior is still required.
 
 ## Build
 

@@ -29,17 +29,6 @@ jobs:
       - name: Build Fabric mod
         run: gradle --no-daemon build
 
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: minecraft-test-reports
-          path: |
-            build/reports/tests/**
-            build/test-results/**
-            build/gametest/**
-          if-no-files-found: ignore
-
       - name: Upload mod jars
         uses: actions/upload-artifact@v7
         with:
