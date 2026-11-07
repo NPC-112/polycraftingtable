@@ -6,7 +6,8 @@
   "mixins": [
     "RecipeManagerAccessor",
     "RecipeManagerMixin",
-    "ServerRecipeBookMixin"
+    "ServerRecipeBookMixin",
+    "PolydexRecipePageAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
