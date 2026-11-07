@@ -15,11 +15,15 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /** Read-only access to Polydex recipe entries and its per-player recent-item list. */
 public final class PolydexMenu {
+    static final int MAX_PERSISTED_RECENT_ITEMS = 64;
+
     private PolydexMenu() {
     }
 
@@ -40,9 +44,18 @@ public final class PolydexMenu {
             return List.of();
         }
 
-        List<Identifier> recentIds = new ArrayList<>(
+        List<Identifier> polydexRecentIds = new ArrayList<>(
                 ((PlayerInterface) player.connection).polydex_lastViewed()
         );
+        List<Identifier> savedRecentIds = player.getAttachedOrElse(
+                PolyCraftingTableMod.RECENT_ITEM_IDS,
+                List.of()
+        );
+        List<Identifier> recentIds = mergeRecentIds(polydexRecentIds, savedRecentIds);
+        if (!recentIds.equals(savedRecentIds)) {
+            player.setAttached(PolyCraftingTableMod.RECENT_ITEM_IDS, recentIds);
+        }
+
         List<RecentRecipe> recentRecipes = new ArrayList<>(Math.min(limit, recentIds.size()));
         for (Identifier id : recentIds) {
             PolydexEntry entry = PolydexPageUtils.getEntry(id);
@@ -71,6 +84,32 @@ public final class PolydexMenu {
         }
 
         return List.copyOf(recentRecipes);
+    }
+
+    static List<Identifier> mergeRecentIds(
+            List<Identifier> polydexRecentIds,
+            List<Identifier> savedRecentIds
+    ) {
+        List<Identifier> merged = new ArrayList<>(MAX_PERSISTED_RECENT_ITEMS);
+        Set<Identifier> seen = new HashSet<>(MAX_PERSISTED_RECENT_ITEMS);
+        appendRecentIds(merged, seen, polydexRecentIds);
+        appendRecentIds(merged, seen, savedRecentIds);
+        return List.copyOf(merged);
+    }
+
+    private static void appendRecentIds(
+            List<Identifier> destination,
+            Set<Identifier> seen,
+            List<Identifier> source
+    ) {
+        for (Identifier id : source) {
+            if (id != null && seen.add(id)) {
+                destination.add(id);
+                if (destination.size() == MAX_PERSISTED_RECENT_ITEMS) {
+                    return;
+                }
+            }
+        }
     }
 
     static boolean canOpenEntryPage(ServerPlayer player, PolydexEntry entry) {

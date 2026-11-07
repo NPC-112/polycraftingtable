@@ -4,6 +4,7 @@ import eu.pb4.polymer.core.api.item.PolymerItemUtils;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -236,6 +237,36 @@ public class CraftingRecipeGameTests {
         helper.assertTrue(
                 !RecipeBookFilter.shouldIncludeCraftingDisplay(PolymerItemUtils.isPolymerServerItem(polymerOutput, null)),
                 "A Polymer-backed crafting display should be excluded from the vanilla recipe book."
+        );
+        helper.succeed();
+    }
+
+    @GameTest
+    public void recentItemHistoryMergesAndStaysBounded(GameTestHelper helper) {
+        Identifier first = Identifier.fromNamespaceAndPath("test", "first");
+        Identifier second = Identifier.fromNamespaceAndPath("test", "second");
+        Identifier older = Identifier.fromNamespaceAndPath("test", "older");
+        List<Identifier> merged = PolydexMenu.mergeRecentIds(
+                List.of(first, second, first),
+                List.of(second, older)
+        );
+        helper.assertTrue(
+                merged.equals(List.of(first, second, older)),
+                "Current Polydex history should come first, with saved IDs appended once."
+        );
+
+        List<Identifier> manyRecentIds = new java.util.ArrayList<>();
+        for (int index = 0; index < PolydexMenu.MAX_PERSISTED_RECENT_ITEMS + 10; index++) {
+            manyRecentIds.add(Identifier.fromNamespaceAndPath("test", "item_" + index));
+        }
+        List<Identifier> bounded = PolydexMenu.mergeRecentIds(manyRecentIds, List.of(older));
+        helper.assertTrue(
+                bounded.size() == PolydexMenu.MAX_PERSISTED_RECENT_ITEMS,
+                "Saved recent history should never exceed its configured size limit."
+        );
+        helper.assertTrue(
+                bounded.get(bounded.size() - 1).equals(manyRecentIds.get(PolydexMenu.MAX_PERSISTED_RECENT_ITEMS - 1)),
+                "The size limit should retain the most recent Polydex IDs first."
         );
         helper.succeed();
     }
