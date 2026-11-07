@@ -40,6 +40,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     private final BlockPos pos;
     private boolean suppressResultUpdate;
+    private boolean returningInputs;
     private final SimpleContainer input = new SimpleContainer(9) {
         @Override
         public void setChanged() {
@@ -423,15 +424,30 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     @Override
-    public void onPlayerClose(boolean success) {
-        List<ItemStack> leftovers = this.input.getItems().stream()
-                .filter(stack -> !stack.isEmpty())
-                .map(ItemStack::copy)
-                .toList();
-        this.input.clearContent();
-        for (ItemStack stack : leftovers) {
-            this.player.getInventory().placeItemBackInInventory(stack, Prediction.SERVER_ONLY);
+    public void onRemoved() {
+        // SGUI calls this for every menu removal, including another mod opening
+        // a screen. onPlayerClose only handles a client close-screen packet.
+        if (this.returningInputs) {
+            return;
         }
-        super.onPlayerClose(success);
+
+        this.returningInputs = true;
+        boolean wasSuppressed = this.suppressResultUpdate;
+        this.suppressResultUpdate = true;
+        try {
+            for (int slot = 0; slot < this.input.getContainerSize(); slot++) {
+                ItemStack stack = this.input.getItem(slot);
+                if (!stack.isEmpty()) {
+                    // Vanilla returns what fits and drops any overflow. Clear
+                    // only after delivery; empty slots make repeat calls safe.
+                    this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
+                    this.input.setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        } finally {
+            this.suppressResultUpdate = wasSuppressed;
+            this.returningInputs = false;
+        }
+        super.onRemoved();
     }
 }
