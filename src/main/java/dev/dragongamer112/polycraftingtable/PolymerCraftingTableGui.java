@@ -81,8 +81,8 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 })
                 .build());
 
-        // Keep a true empty visual gap beside Polydex instead of another pane or item.
-        this.setSlot(SPACER_SLOT, GuiUtils.EMPTY);
+        // Match the unused-slot styling around the recent-item bar.
+        this.setSlot(SPACER_SLOT, filler.build());
         List<PolydexMenu.RecentRecipe> recentRecipes =
                 PolydexMenu.recentCraftingRecipes(this.player, RECENT_SLOT_COUNT);
         for (int index = 0; index < recentRecipes.size(); index++) {
