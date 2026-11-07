@@ -7,6 +7,7 @@ import eu.pb4.polydex.impl.book.ui.GuiUtils;
 import eu.pb4.sgui.api.ClickType;
 import eu.pb4.sgui.api.elements.GuiElement;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
+import eu.pb4.sgui.api.elements.SimpleGuiElement;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -57,8 +58,8 @@ final class PolymerCraftingTableGui extends SimpleGui {
         this.setTitle(ExtendedGui.formatTexturedText(
                 player,
                 PageTextures.CRAFTING,
-                null,
-                Component.literal("Polymer Crafting Table")
+                CraftingTableGuiTextures.RECENT_SPACER,
+                PolyCraftingTableMod.TABLE_NAME
         ));
 
         GuiElementBuilder filler = GuiUtils.hasTexture(player)
@@ -82,8 +83,9 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 })
                 .build());
 
-        // Match the unused-slot styling around the recent-item bar.
-        this.setSlot(SPACER_SLOT, filler.build());
+        // The title overlay covers the recessed chest slot; the element itself
+        // stays empty and inert, with no item or tooltip, even without the pack.
+        this.setSlot(SPACER_SLOT, SimpleGuiElement.EMPTY);
         List<PolydexMenu.RecentRecipe> recentRecipes =
                 PolydexMenu.recentCraftingRecipes(this.player, RECENT_SLOT_COUNT);
         for (int index = 0; index < recentRecipes.size(); index++) {

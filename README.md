@@ -22,6 +22,8 @@ Operators can get the table with:
 
 Right-click the table to craft. Left-click a recent item to autofill the grid; right-click it to view its Polydex page. Opening Polydex returns any remaining ingredients to your inventory.
 
+The blank GUI spacer requires the Polymer server resource pack. Regenerate and redistribute that pack after updating this mod, then have players accept/reload it. Without the pack, the separator remains an inert empty inventory slot; the table still works.
+
 ## Build
 
 GitHub Actions builds the mod on pushes and pull requests. Download the JAR from the `polymer-crafting-table` artifact in a workflow run.
@@ -31,5 +33,5 @@ GitHub Actions builds the mod on pushes and pull requests. Download the JAR from
 - Minecraft 26.3
 - Fabric Loader 0.19.5 or newer
 - Fabric API
-- Polymer Core
+- Polymer Core and Resource Pack
 - Polydex

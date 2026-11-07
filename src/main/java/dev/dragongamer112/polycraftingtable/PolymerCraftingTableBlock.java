@@ -3,6 +3,7 @@ package dev.dragongamer112.polycraftingtable;
 import eu.pb4.polymer.core.api.block.PolymerBlock;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -16,6 +17,11 @@ import org.jspecify.annotations.Nullable;
 public final class PolymerCraftingTableBlock extends Block implements PolymerBlock {
     public PolymerCraftingTableBlock(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public MutableComponent getName() {
+        return PolyCraftingTableMod.TABLE_NAME.copy();
     }
 
     @Override

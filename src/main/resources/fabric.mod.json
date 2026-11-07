@@ -21,6 +21,7 @@
     "java": ">=25",
     "fabric-api": "*",
     "polymer-core": "*",
+    "polymer-resource-pack": "*",
     "polydex": "*"
   }
 }
