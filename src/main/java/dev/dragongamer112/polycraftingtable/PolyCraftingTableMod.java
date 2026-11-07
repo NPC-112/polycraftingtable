@@ -3,6 +3,7 @@ package dev.dragongamer112.polycraftingtable;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -58,6 +59,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);
         // Use ITEM_NAME, not CUSTOM_NAME: anvil names must still take precedence.
         // The fallback also works on vanilla clients without our language file.
@@ -71,11 +73,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
         LOGGER.info("Polymer Crafting Table initialized.");
     }
 
-    static void openPolydexMenu(ServerPlayer player) {
-        if (!PolydexMenu.openMainMenu(player)) {
-            player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
-                    "Polydex is not ready yet. Try again in a moment."
-            ));
-        }
+    static void openPolydexMenu(ServerPlayer player, BlockPos pos) {
+        PolydexReturnSession.openMain(player, pos);
     }
 }

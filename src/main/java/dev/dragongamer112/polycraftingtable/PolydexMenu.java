@@ -5,7 +5,6 @@ import eu.pb4.polydex.api.v1.recipe.PolydexPage;
 import eu.pb4.polydex.api.v1.recipe.PolydexPageUtils;
 import eu.pb4.polydex.impl.PlayerInterface;
 import eu.pb4.polydex.impl.book.ui.MainIndexGui;
-import eu.pb4.polydex.impl.book.ui.PageViewerGui;
 import eu.pb4.polydex.impl.book.view.crafting.AbstractCraftingRecipePage;
 import dev.dragongamer112.polycraftingtable.mixin.PolydexRecipePageAccessor;
 import net.minecraft.resources.Identifier;
@@ -120,8 +119,7 @@ public final class PolydexMenu {
         if (!canOpenEntryPage(player, entry)) {
             return false;
         }
-        PageViewerGui.openEntry(player, entry, false, null);
-        return true;
+        return PolydexPageUtils.openRecipeListUi(player, entry, null);
     }
 
     private static CraftingRecipe recipeForPage(PolydexPage page) {

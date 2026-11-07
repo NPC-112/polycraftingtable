@@ -20,7 +20,7 @@ Operators can get the table with:
 /give @s polycraftingtable:polymer_crafting_table
 ```
 
-Right-click the table to craft. Left-click a recent item to autofill the grid; right-click it to view its Polydex page. Opening Polydex returns any remaining ingredients to your inventory.
+Right-click the table to craft. Left-click a recent item to autofill the grid; right-click it to view its Polydex page. Opening Polydex returns any remaining ingredients to your inventory. When opened from the table, exiting Polydex returns to that table with an empty grid and refreshed recent items, provided the table is still loaded and nearby. Polydex opened independently keeps its normal closing behavior.
 
 ## Build
 

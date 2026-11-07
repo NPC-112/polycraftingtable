@@ -54,6 +54,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
         super(MenuType.GENERIC_9x6, player, false);
+        PolydexReturnSession.cancel(player);
         this.pos = pos;
         this.setTitle(ExtendedGui.formatTexturedText(
                 player,
@@ -77,10 +78,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
         }
         this.setSlot(POLYDEX_SLOT, new GuiElementBuilder(Items.KNOWLEDGE_BOOK)
                 .setName(Component.literal("Open Polydex"))
-                .setCallback(() -> {
-                    this.close();
-                    PolyCraftingTableMod.openPolydexMenu(this.player);
-                })
+                .setCallback(() -> PolyCraftingTableMod.openPolydexMenu(this.player, this.pos))
                 .build());
 
         // The title overlay covers the recessed chest slot; the element itself
@@ -210,12 +208,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
             return;
         }
 
-        this.close();
-        if (!PolydexMenu.openEntryPage(this.player, entry)) {
-            this.player.sendOverlayMessage(Component.literal(
-                    "Polydex is not ready yet. Try again in a moment."
-            ));
-        }
+        PolydexReturnSession.openEntry(this.player, this.pos, entry);
     }
 
     private boolean inventoryMatches(List<ItemStack> expected) {

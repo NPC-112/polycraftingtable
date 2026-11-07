@@ -33,7 +33,7 @@ public final class PolymerCraftingTableBlock extends Block implements PolymerBlo
             BlockHitResult hit
     ) {
         if (player instanceof ServerPlayer serverPlayer && player.isShiftKeyDown()) {
-            PolyCraftingTableMod.openPolydexMenu(serverPlayer);
+            PolyCraftingTableMod.openPolydexMenu(serverPlayer, pos);
             return InteractionResult.SUCCESS_SERVER;
         }
 
