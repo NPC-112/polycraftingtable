@@ -103,11 +103,11 @@ public final class PolydexMenu {
             List<Identifier> source
     ) {
         for (Identifier id : source) {
+            if (destination.size() >= MAX_PERSISTED_RECENT_ITEMS) {
+                return;
+            }
             if (id != null && seen.add(id)) {
                 destination.add(id);
-                if (destination.size() == MAX_PERSISTED_RECENT_ITEMS) {
-                    return;
-                }
             }
         }
     }
