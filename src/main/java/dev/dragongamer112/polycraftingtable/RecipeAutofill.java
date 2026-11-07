@@ -21,8 +21,33 @@ final class RecipeAutofill {
     private RecipeAutofill() {
     }
 
+    static boolean supports(CraftingRecipe recipe) {
+        if (recipe == null || recipe.isSpecial()) {
+            return false;
+        }
+
+        if (recipe instanceof ShapedRecipe shaped) {
+            int width = shaped.getWidth();
+            int height = shaped.getHeight();
+            List<Optional<Ingredient>> ingredients = shaped.getIngredients();
+            return width >= 1 && width <= 3
+                    && height >= 1 && height <= 3
+                    && ingredients.size() == width * height
+                    && ingredients.stream().anyMatch(ingredient ->
+                    ingredient.isPresent() && !ingredient.get().isEmpty());
+        }
+
+        if (recipe instanceof ShapelessRecipe shapeless) {
+            List<Ingredient> ingredients = shapeless.placementInfo().ingredients();
+            return ingredients.size() <= GRID_SIZE
+                    && ingredients.stream().anyMatch(ingredient -> !ingredient.isEmpty());
+        }
+
+        return false;
+    }
+
     static Optional<Plan> plan(CraftingRecipe recipe, List<ItemStack> inventory) {
-        if (recipe.isSpecial() || inventory.size() < INVENTORY_SIZE) {
+        if (!supports(recipe) || inventory.size() < INVENTORY_SIZE) {
             return Optional.empty();
         }
 

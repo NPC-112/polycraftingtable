@@ -7,7 +7,6 @@
     "RecipeManagerAccessor",
     "RecipeManagerMixin",
     "ServerRecipeBookMixin",
-    "PolydexPageViewerMixin",
     "PolydexRecipePageAccessor"
   ],
   "injectors": {

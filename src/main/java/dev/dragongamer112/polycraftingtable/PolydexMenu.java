@@ -1,66 +1,91 @@
 package dev.dragongamer112.polycraftingtable;
 
+import eu.pb4.polydex.api.v1.recipe.PolydexEntry;
 import eu.pb4.polydex.api.v1.recipe.PolydexPage;
 import eu.pb4.polydex.api.v1.recipe.PolydexPageUtils;
-import eu.pb4.polydex.impl.book.ui.ExtendedGui;
+import eu.pb4.polydex.impl.PlayerInterface;
 import eu.pb4.polydex.impl.book.ui.MainIndexGui;
+import eu.pb4.polydex.impl.book.ui.PageViewerGui;
 import eu.pb4.polydex.impl.book.view.crafting.AbstractCraftingRecipePage;
-import eu.pb4.sgui.api.containerwrappers.SlotBasedWrapperMenu;
 import dev.dragongamer112.polycraftingtable.mixin.PolydexRecipePageAccessor;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-/** Keeps Polydex's implementation-level integrations and table-origin state together. */
+/** Read-only access to Polydex recipe entries and its per-player recent-item list. */
 public final class PolydexMenu {
-    private static final Map<UUID, TableOrigin> TABLE_ORIGINS = new HashMap<>();
-
     private PolydexMenu() {
     }
 
-    static void initialize() {
-        ServerTickEvents.END_SERVER_TICK.register(server -> TABLE_ORIGINS.entrySet().removeIf(entry -> {
-            ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
-            return player == null
-                    || !isValidOrigin(player, entry.getValue())
-                    || !isPolydexMenu(player);
-        }));
+    static boolean isReady() {
+        return PolydexPageUtils.isReady();
     }
 
-    static boolean openMainMenu(ServerPlayer player, BlockPos pos) {
-        TABLE_ORIGINS.remove(player.getUUID());
-        TableOrigin origin = new TableOrigin(pos.immutable(), player.level().dimension());
-        if (!PolydexPageUtils.isReady() || !isValidOrigin(player, origin)) {
+    static boolean openMainMenu(ServerPlayer player) {
+        if (!isReady()) {
             return false;
         }
 
-        TABLE_ORIGINS.put(player.getUUID(), origin);
-        boolean opened = new MainIndexGui(player, -1).open();
-        if (!opened) {
-            TABLE_ORIGINS.remove(player.getUUID());
-        }
-        return opened;
+        return new MainIndexGui(player, -1).open();
     }
 
-    public static boolean hasValidTableOrigin(ServerPlayer player) {
-        TableOrigin origin = TABLE_ORIGINS.get(player.getUUID());
-        if (origin == null || !isValidOrigin(player, origin) || !isPolydexMenu(player)) {
-            TABLE_ORIGINS.remove(player.getUUID());
+    static List<RecentRecipe> recentCraftingRecipes(ServerPlayer player, int limit) {
+        if (!isReady() || limit <= 0) {
+            return List.of();
+        }
+
+        List<Identifier> recentIds = new ArrayList<>(
+                ((PlayerInterface) player.connection).polydex_lastViewed()
+        );
+        List<RecentRecipe> recentRecipes = new ArrayList<>(Math.min(limit, recentIds.size()));
+        for (Identifier id : recentIds) {
+            PolydexEntry entry = PolydexPageUtils.getEntry(id);
+            if (entry == null) {
+                continue;
+            }
+
+            CraftingRecipe recipe = entry.getVisiblePages(player).stream()
+                    .map(PolydexMenu::recipeForPage)
+                    .filter(Objects::nonNull)
+                    .filter(RecipeAutofill::supports)
+                    .findFirst()
+                    .orElse(null);
+            if (recipe == null) {
+                continue;
+            }
+
+            ItemStack icon = entry.stack().toItemStack(player);
+            if (icon.isEmpty()) {
+                continue;
+            }
+            recentRecipes.add(new RecentRecipe(entry, recipe, icon.copy()));
+            if (recentRecipes.size() == limit) {
+                break;
+            }
+        }
+
+        return List.copyOf(recentRecipes);
+    }
+
+    static boolean canOpenEntryPage(ServerPlayer player, PolydexEntry entry) {
+        return isReady() && !entry.getVisiblePages(player).isEmpty();
+    }
+
+    static boolean openEntryPage(ServerPlayer player, PolydexEntry entry) {
+        if (!canOpenEntryPage(player, entry)) {
             return false;
         }
+        PageViewerGui.openEntry(player, entry, false, null);
         return true;
     }
 
-    public static CraftingRecipe recipeForPage(PolydexPage page) {
+    private static CraftingRecipe recipeForPage(PolydexPage page) {
         if (!(page instanceof AbstractCraftingRecipePage<?>)
                 || !(page instanceof PolydexRecipePageAccessor accessor)) {
             return null;
@@ -69,31 +94,6 @@ public final class PolydexMenu {
         return recipe instanceof CraftingRecipe craftingRecipe ? craftingRecipe : null;
     }
 
-    public static void returnToTable(ServerPlayer player, CraftingRecipe recipe) {
-        TableOrigin origin = TABLE_ORIGINS.get(player.getUUID());
-        if (origin == null || !isValidOrigin(player, origin) || !isPolydexMenu(player)) {
-            TABLE_ORIGINS.remove(player.getUUID());
-            player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
-                    "The originating table session is no longer available."
-            ));
-            return;
-        }
-
-        TABLE_ORIGINS.remove(player.getUUID());
-        new PolymerCraftingTableGui(player, origin.pos(), recipe);
-    }
-
-    private static boolean isPolydexMenu(ServerPlayer player) {
-        return player.containerMenu instanceof SlotBasedWrapperMenu menu
-                && menu.getBackingGui() instanceof ExtendedGui;
-    }
-
-    private static boolean isValidOrigin(ServerPlayer player, TableOrigin origin) {
-        return player.level().dimension().equals(origin.dimension())
-                && player.position().distanceToSqr(Vec3.atCenterOf(origin.pos())) <= 18 * 18
-                && player.level().getBlockState(origin.pos()).is(PolyCraftingTableMod.TABLE);
-    }
-
-    private record TableOrigin(BlockPos pos, ResourceKey<Level> dimension) {
+    record RecentRecipe(PolydexEntry entry, CraftingRecipe recipe, ItemStack icon) {
     }
 }

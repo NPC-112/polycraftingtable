@@ -1,6 +1,7 @@
 package dev.dragongamer112.polycraftingtable;
 
 import eu.pb4.polydex.api.v1.recipe.PageTextures;
+import eu.pb4.polydex.api.v1.recipe.PolydexEntry;
 import eu.pb4.polydex.impl.book.ui.ExtendedGui;
 import eu.pb4.polydex.impl.book.ui.GuiUtils;
 import eu.pb4.sgui.api.ClickType;
@@ -32,6 +33,9 @@ final class PolymerCraftingTableGui extends SimpleGui {
     private static final int[] INPUT_SLOTS = {11, 12, 13, 20, 21, 22, 29, 30, 31};
     private static final int RESULT_SLOT = 24;
     private static final int ARROW_SLOT = 23;
+    private static final int FIRST_RECENT_SLOT = 45;
+    private static final int RECENT_SLOT_COUNT = 7;
+    private static final int SPACER_SLOT = 52;
     private static final int POLYDEX_SLOT = 53;
 
     private final BlockPos pos;
@@ -47,10 +51,6 @@ final class PolymerCraftingTableGui extends SimpleGui {
     };
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
-        this(player, pos, null);
-    }
-
-    PolymerCraftingTableGui(ServerPlayer player, BlockPos pos, CraftingRecipe autofillRecipe) {
         super(MenuType.GENERIC_9x6, player, false);
         this.pos = pos;
         this.setTitle(ExtendedGui.formatTexturedText(
@@ -77,24 +77,48 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .setName(Component.literal("Open Polydex"))
                 .setCallback(() -> {
                     this.close();
-                    PolyCraftingTableMod.openPolydexMenu(this.player, this.pos);
+                    PolyCraftingTableMod.openPolydexMenu(this.player);
                 })
                 .build());
+
+        // Keep a true empty visual gap beside Polydex instead of another pane or item.
+        this.setSlot(SPACER_SLOT, GuiUtils.EMPTY);
+        List<PolydexMenu.RecentRecipe> recentRecipes =
+                PolydexMenu.recentCraftingRecipes(this.player, RECENT_SLOT_COUNT);
+        for (int index = 0; index < recentRecipes.size(); index++) {
+            PolydexMenu.RecentRecipe recent = recentRecipes.get(index);
+            this.setSlot(FIRST_RECENT_SLOT + index, new GuiElementBuilder(recent.icon().copy())
+                    .setName(recent.icon().getHoverName())
+                    .setCallback((slot, clickType, action, gui) -> {
+                        if (action != ContainerInput.PICKUP) {
+                            return;
+                        }
+                        if (clickType.isRight) {
+                            this.openRecentEntryInPolydex(recent.entry());
+                        } else {
+                            this.autofillFromInventory(recent.recipe());
+                        }
+                    })
+                    .build());
+        }
 
         for (int inputIndex = 0; inputIndex < INPUT_SLOTS.length; inputIndex++) {
             int index = inputIndex;
             this.setSlot(INPUT_SLOTS[index], new Slot(this.input, index, 0, 0));
         }
 
-        if (autofillRecipe == null) {
-            this.updateResult();
-            this.open();
-        } else if (this.open()) {
-            this.autofillFromInventory(autofillRecipe);
-        }
+        this.updateResult();
+        this.open();
     }
 
     private void autofillFromInventory(CraftingRecipe recipe) {
+        if (this.inputSnapshot().stream().anyMatch(stack -> !stack.isEmpty())) {
+            this.player.sendOverlayMessage(Component.literal(
+                    "Empty the crafting grid before using recipe autofill."
+            ));
+            return;
+        }
+
         var inventory = this.player.getInventory();
         List<ItemStack> inventoryBefore = new ArrayList<>(36);
         for (int slot = 0; slot < 36; slot++) {
@@ -172,6 +196,22 @@ final class PolymerCraftingTableGui extends SimpleGui {
             ));
         } else {
             this.player.sendOverlayMessage(Component.literal("Recipe filled from your inventory."));
+        }
+    }
+
+    private void openRecentEntryInPolydex(PolydexEntry entry) {
+        if (!PolydexMenu.canOpenEntryPage(this.player, entry)) {
+            this.player.sendOverlayMessage(Component.literal(
+                    "This item no longer has a Polydex recipe page available."
+            ));
+            return;
+        }
+
+        this.close();
+        if (!PolydexMenu.openEntryPage(this.player, entry)) {
+            this.player.sendOverlayMessage(Component.literal(
+                    "Polydex is not ready yet. Try again in a moment."
+            ));
         }
     }
 
@@ -366,7 +406,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     @Override
     public boolean onClick(int index, ClickType clickType, ContainerInput action, GuiElement element) {
-        return index == RESULT_SLOT;
+        return index == RESULT_SLOT
+                || index == POLYDEX_SLOT
+                || index == SPACER_SLOT
+                || (index >= FIRST_RECENT_SLOT && index < FIRST_RECENT_SLOT + RECENT_SLOT_COUNT);
     }
 
     @Override

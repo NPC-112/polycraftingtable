@@ -147,6 +147,7 @@ public class CraftingRecipeGameTests {
                 new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.OAK_PLANKS)
         );
         CraftingRecipe recipe = matchingRecipe(helper, chestInput).value();
+        helper.assertTrue(RecipeAutofill.supports(recipe), "Shaped recipes should support safe autofill.");
         List<ItemStack> inventory = emptyInventory();
         inventory.set(0, new ItemStack(Items.OAK_PLANKS, 8));
 
@@ -170,6 +171,7 @@ public class CraftingRecipeGameTests {
                 ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY
         );
         CraftingRecipe recipe = matchingRecipe(helper, planksInput).value();
+        helper.assertTrue(RecipeAutofill.supports(recipe), "Shapeless recipes should support safe autofill.");
         List<ItemStack> inventory = emptyInventory();
         inventory.set(0, new ItemStack(Items.OAK_LOG));
 
@@ -192,6 +194,7 @@ public class CraftingRecipeGameTests {
                 ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY
         );
         CraftingRecipe recipe = matchingRecipe(helper, repairInput).value();
+        helper.assertTrue(!RecipeAutofill.supports(recipe), "Special recipes should be skipped in the recent bar.");
         List<ItemStack> inventory = emptyInventory();
         inventory.set(0, damagedWoodenPickaxe(40));
         inventory.set(1, damagedWoodenPickaxe(40));
