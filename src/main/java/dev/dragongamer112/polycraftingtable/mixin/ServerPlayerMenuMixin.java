@@ -15,11 +15,14 @@ import java.util.OptionalInt;
 /** Observe vanilla transitions; no Polydex classes are modified. */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMenuMixin {
-    @Inject(method = "openMenu", at = @At("TAIL"))
-    private void polycraftingtable$menuOpened(MenuProvider provider, CallbackInfoReturnable<OptionalInt> cir) {
-        if (cir.getReturnValue().isPresent()) {
-            PolydexReturnSession.onMenuOpened((ServerPlayer) (Object) this);
-        }
+    @Inject(method = "openMenu", at = @At("HEAD"))
+    private void polycraftingtable$beforeMenuOpened(MenuProvider provider, CallbackInfoReturnable<OptionalInt> cir) {
+        PolydexReturnSession.beforeMenuOpened((ServerPlayer) (Object) this);
+    }
+
+    @Inject(method = "openMenu", at = @At("RETURN"))
+    private void polycraftingtable$afterMenuOpened(MenuProvider provider, CallbackInfoReturnable<OptionalInt> cir) {
+        PolydexReturnSession.afterMenuOpened((ServerPlayer) (Object) this);
     }
 
     @Inject(method = "die", at = @At("HEAD"))

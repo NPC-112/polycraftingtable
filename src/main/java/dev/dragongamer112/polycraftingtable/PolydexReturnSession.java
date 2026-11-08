@@ -1,9 +1,6 @@
 package dev.dragongamer112.polycraftingtable;
 
 import eu.pb4.polydex.api.v1.recipe.PolydexEntry;
-import eu.pb4.polydex.impl.book.ui.MainIndexGui;
-import eu.pb4.polydex.impl.book.ui.PageViewerGui;
-import eu.pb4.polydex.impl.book.ui.SearchGui;
 import eu.pb4.sgui.api.SguiUtils;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -19,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
-/** Return context owned by this mod, never installed into Polydex's UI. */
+/** Navigation-only return context; never owns ingredients or modifies another GUI. */
 public final class PolydexReturnSession {
     private static final Map<ServerPlayer, Session> SESSIONS = new IdentityHashMap<>();
 
@@ -44,9 +41,20 @@ public final class PolydexReturnSession {
         SESSIONS.remove(player);
     }
 
-    /** Called after vanilla opens a menu, including other mods' SGUI screens. */
-    public static void onMenuOpened(ServerPlayer player) {
-        if (SESSIONS.containsKey(player) && !isPolydexMenu(player)) {
+    /** Called before replacement removes our crafting menu and returns its inputs. */
+    public static void beforeMenuOpened(ServerPlayer player) {
+        if (!SESSIONS.containsKey(player)
+                && SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui crafting) {
+            Session session = new Session(player, player.level(), crafting.tablePos());
+            if (validOrigin(session)) {
+                SESSIONS.put(player, session);
+            }
+        }
+    }
+
+    /** A rejected opening must not turn closing the unchanged table into a return. */
+    public static void afterMenuOpened(ServerPlayer player) {
+        if (SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui) {
             cancel(player);
         }
     }
@@ -63,8 +71,8 @@ public final class PolydexReturnSession {
             return;
         }
 
-        // Install first so a mod replacing Polydex during its own opening
-        // callbacks can cancel this context, even if that screen closes at once.
+        // Install before replacement. Follow the entire menu chain, including
+        // layered SGUI backends, search screens, and another mod's inventories.
         SESSIONS.put(player, session);
         boolean opened = false;
         try {
@@ -78,7 +86,7 @@ public final class PolydexReturnSession {
         if (SESSIONS.get(player) != session) {
             return;
         }
-        if (opened && isPolydexMenu(player)) {
+        if (opened) {
             return;
         }
         if (!opened) {
@@ -115,11 +123,13 @@ public final class PolydexReturnSession {
                 } else {
                     session.exitObserved = true;
                 }
-            } else if (isPolydexMenu(player)) {
-                session.exitObserved = false;
-            } else {
-                // Also catches menus not opened through vanilla openMenu.
+            } else if (SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui) {
+                // Failed replacement left the original crafting screen intact.
                 SESSIONS.remove(player, session);
+            } else {
+                // Do not replace an active menu. SGUI's layered GUI exposes its
+                // BackendSimpleGui here, not the Polydex frontend class.
+                session.exitObserved = false;
             }
         }
     }
@@ -133,13 +143,6 @@ public final class PolydexReturnSession {
                 && player.position().distanceToSqr(Vec3.atCenterOf(session.pos)) <= 18 * 18
                 && session.level.hasChunkAt(session.pos)
                 && session.level.getBlockState(session.pos).is(PolyCraftingTableMod.TABLE);
-    }
-
-    private static boolean isPolydexMenu(ServerPlayer player) {
-        var gui = SguiUtils.getCurrentGui(player);
-        // Search is an AnvilInputGui, not an ExtendedGui. Do not classify every
-        // ExtendedGui as Polydex: another mod might use it for its own screen.
-        return gui instanceof MainIndexGui || gui instanceof PageViewerGui || gui instanceof SearchGui;
     }
 
     private static final class Session {

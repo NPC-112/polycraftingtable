@@ -55,7 +55,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
         super(MenuType.GENERIC_9x6, player, false);
         PolydexReturnSession.cancel(player);
-        this.pos = pos;
+        this.pos = pos.immutable();
         this.setTitle(ExtendedGui.formatTexturedText(
                 player,
                 PageTextures.CRAFTING,
@@ -110,6 +110,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
         this.updateResult();
         this.open();
+    }
+
+    BlockPos tablePos() {
+        return this.pos;
     }
 
     private void autofillFromInventory(CraftingRecipe recipe) {
