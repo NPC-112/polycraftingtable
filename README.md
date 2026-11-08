@@ -1,6 +1,9 @@
 # PolyCraftingTable
 
-A Fabric mod that adds a universal 3×3 crafting table for vanilla, modded, and Polymer-backed recipes. Polymer-backed results stay out of the vanilla crafting recipe book, but remain available through this table and Polydex.
+A Fabric mod that adds a universal 3×3 crafting table for vanilla, modded, and Polymer-backed recipes. Polymer-backed results stay out of the vanilla crafting recipe book, but remain available through this table and Polydex. 
+Was mainly made to reduce the chances of a player getting a recipe book packet being too larger error (io.netty.handler.codec.EncoderException: java.lang.IllegalArgumentException: Packet too big ). This error isn't exclusive to recipe book packets players receive as they unlock recipes but this is the most common for me. 
+
+I am sorry this is vibecoded. use at your own risk 
 
 ## Features
 
