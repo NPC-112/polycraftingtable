@@ -51,7 +51,7 @@ public final class PolydexReturnSession {
         open(player, null, () -> PolydexMenu.openMainMenu(player));
     }
 
-    static void openFromInventory(ServerPlayer player) {
+    public static void openFromInventory(ServerPlayer player) {
         if (!ServerPlayNetworking.canSend(player, OpenPlayerInventoryPayload.TYPE)) {
             player.sendOverlayMessage(Component.translatableWithFallback(
                     "message.polycraftingtable.client_required",

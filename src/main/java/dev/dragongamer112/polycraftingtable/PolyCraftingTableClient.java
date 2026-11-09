@@ -11,7 +11,7 @@ public final class PolyCraftingTableClient implements ClientModInitializer {
                 OpenPlayerInventoryPayload.TYPE,
                 (payload, context) -> {
                     if (context.player() != null) {
-                        context.client().setScreen(new InventoryScreen(context.player()));
+                        context.client().gui.setScreen(new InventoryScreen(context.player()));
                     }
                 }
         );
