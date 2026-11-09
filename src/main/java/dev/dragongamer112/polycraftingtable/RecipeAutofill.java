@@ -155,9 +155,9 @@ final class RecipeAutofill {
             return new PlanResult(null, Failure.MISSING_INGREDIENTS);
         }
 
-        List<ItemStack> grid = new ArrayList<>(GRID_SIZE);
+        List<ItemStack> plannedGrid = new ArrayList<>(GRID_SIZE);
         for (int slot = 0; slot < GRID_SIZE; slot++) {
-            grid.add(ItemStack.EMPTY);
+            plannedGrid.add(ItemStack.EMPTY);
         }
         int[] consumedBySource = new int[sources.size()];
         for (int index = 0; index < requirements.size(); index++) {
@@ -165,7 +165,7 @@ final class RecipeAutofill {
             ItemStack source = sources.get(units.get(unit).sourceIndex());
             ItemStack placed = source.copy();
             placed.setCount(1);
-            grid.set(requirements.get(index).gridSlot(), placed);
+            plannedGrid.set(requirements.get(index).gridSlot(), placed);
             consumedBySource[units.get(unit).sourceIndex()]++;
         }
 
@@ -185,7 +185,7 @@ final class RecipeAutofill {
             }
         }
 
-        return new PlanResult(new Plan(List.copyOf(grid), List.copyOf(updatedInventory), requirements.size()),
+        return new PlanResult(new Plan(List.copyOf(plannedGrid), List.copyOf(updatedInventory), requirements.size()),
                 Failure.NONE);
     }
 
