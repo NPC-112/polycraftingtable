@@ -15,7 +15,7 @@ final class RecipeCycleOrder {
             return List.of();
         }
 
-        int pivotIndex = candidates.indexOf(pivot);
+        int pivotIndex = pivot == null ? -1 : candidates.indexOf(pivot);
         if (pivotIndex < 0) {
             return List.copyOf(candidates);
         }

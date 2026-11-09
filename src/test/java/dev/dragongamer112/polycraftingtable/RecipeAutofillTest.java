@@ -4,6 +4,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +22,13 @@ final class RecipeAutofillTest {
     static void bootstrapMinecraft() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        // In 26.3 registry bootstrap does not bind item component defaults.
+        // These planner fixtures only require the vanilla stack-size component;
+        // no world, data-pack load, or GameTest server is needed.
+        var components = DataComponentMap.builder().set(DataComponents.MAX_STACK_SIZE, 64).build();
+        for (var item : List.of(Items.OAK_PLANKS, Items.GLASS, Items.COBBLESTONE)) {
+            item.builtInRegistryHolder().bindComponents(components);
+        }
     }
 
     @Test
@@ -74,6 +83,29 @@ final class RecipeAutofillTest {
 
         assertEquals(RecipeAutofill.Failure.MISSING_INGREDIENTS, result.failure());
         assertFalse(result.succeeded());
+    }
+
+    @Test
+    void reusesGridVariantRatherThanRequiringAnExtraInventorySlot() {
+        List<ItemStack> inventory = emptyStacks(36);
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            inventory.set(slot, new ItemStack(Items.COBBLESTONE, 64));
+        }
+        inventory.set(0, new ItemStack(Items.OAK_PLANKS, 64));
+        List<ItemStack> grid = emptyStacks(9);
+        grid.set(0, new ItemStack(Items.GLASS, 2));
+        var flexible = List.of(
+                new RecipeAutofill.PlacementRequirement(0,
+                        stack -> stack.is(Items.OAK_PLANKS) || stack.is(Items.GLASS)),
+                new RecipeAutofill.PlacementRequirement(1,
+                        stack -> stack.is(Items.OAK_PLANKS) || stack.is(Items.GLASS)));
+
+        var result = RecipeAutofill.planRequirements(flexible, inventory, grid);
+
+        assertTrue(result.succeeded());
+        assertTrue(result.plan().grid().get(0).is(Items.GLASS));
+        assertTrue(result.plan().grid().get(1).is(Items.GLASS));
+        assertEquals(64, result.plan().inventory().get(0).getCount());
     }
 
     private static List<RecipeAutofill.PlacementRequirement> twoPlankRequirements() {

@@ -13,6 +13,12 @@ final class RecipeCycleOrderTest {
     private static final Identifier THIRD = id("third");
 
     @Test
+    void startsInPageOrderWithoutAPreviousChoice() {
+        assertEquals(List.of(FIRST, SECOND, THIRD),
+                RecipeCycleOrder.order(List.of(FIRST, SECOND, THIRD), null, false));
+    }
+
+    @Test
     void startsWithRememberedRecipeOnFirstVisit() {
         assertEquals(List.of(SECOND, THIRD, FIRST),
                 RecipeCycleOrder.order(List.of(FIRST, SECOND, THIRD), SECOND, false));

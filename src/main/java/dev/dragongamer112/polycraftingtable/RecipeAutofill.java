@@ -127,6 +127,12 @@ final class RecipeAutofill {
                     candidates.add(unit);
                 }
             }
+            // Empty small source stacks first; prefer the old grid on ties.
+            // This reuses grid ingredients instead of needlessly returning them
+            // to an already-full inventory.
+            candidates.sort(Comparator
+                    .comparingInt((Integer unit) -> units.get(unit).stack().getCount())
+                    .thenComparingInt(unit -> units.get(unit).sourceIndex() >= INVENTORY_SIZE ? 0 : 1));
             candidatesByRequirement.add(candidates);
         }
 

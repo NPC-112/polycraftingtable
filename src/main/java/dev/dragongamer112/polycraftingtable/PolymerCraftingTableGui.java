@@ -156,7 +156,8 @@ final class PolymerCraftingTableGui extends SimpleGui {
                     inventoryBefore,
                     gridBefore
             );
-            if (attempt.succeeded()) {
+            if (attempt.succeeded()
+                    && candidate.recipe().matches(craftingInput(attempt.plan().grid()), this.player.level())) {
                 selected = candidate;
                 selectedPlan = attempt.plan();
                 break;
