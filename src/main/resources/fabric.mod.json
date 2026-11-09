@@ -3,7 +3,7 @@
   "id": "polycraftingtable",
   "version": "${version}",
   "name": "Polymer Crafting Table",
-  "description": "A universal crafting station with Polydex lookup that keeps Polymer-backed crafting recipes out of vanilla crafting and its recipe book.",
+  "description": "A universal crafting station with Polydex lookup and configurable vanilla crafting and recipe-book restrictions.",
   "authors": ["polycraftingtable contributors"],
   "license": "GPL-3.0-only",
   "environment": "*",

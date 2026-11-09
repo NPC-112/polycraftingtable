@@ -1,11 +1,11 @@
 # PolyCraftingTable
 
-This mod intercepts recipe registration for polymer mods from the crafting table. 
-Then in order for players to still have access to crafting them it adds a new crafting table with special features.
+This mod restricts configured crafting recipes in vanilla crafting and its recipe book.
+The custom crafting table and Polydex retain access to every registered crafting recipe.
 
-Was mainly made to reduce the chances of a player getting a recipe book packet being too larger error (io.netty.handler.codec.EncoderException: java.lang.IllegalArgumentException: Packet too big ). This error isn't exclusive to recipe book packets players receive as they unlock recipes but this is the most common for me. 
+Was mainly made to reduce the chances of a player getting a recipe book packet being too larger error (io.netty.handler.codec.EncoderException: java.lang.IllegalArgumentException: Packet too big ). This error isn't exclusive to recipe book packets players receive as they unlock recipes but this is the most common for me.
 
-I am sorry this is vibecoded. Use at your own risk 
+I am sorry this is vibecoded. Use at your own risk
 
 No crafting recipe yet.
 
@@ -18,7 +18,8 @@ Operators can get the table with:
 ## Features
 
 - Craft standard crafting recipes, including shaped, shapeless, and supported special recipes.
-- Keep ordinary recipes in vanilla crafting and its recipe book; exclude only Polymer-backed results.
+- Configure vanilla crafting and recipe-book restrictions for any mod, not just Polymer.
+- Apply the same restrictions to the player crafting grid, vanilla crafting table, and automated Crafter.
 - Open Polydex from within the table or sneak-right-click the table with an empty hand.
 - Use recent Polydex items to autofill ingredients from inventory or open their recipe pages.
 - Multiple chances for lost items at the moment. Has stopped happening for me but not every mod does things the same way.
@@ -30,9 +31,59 @@ Install the mod and its dependencies on the server and client. In singleplayer, 
 
 Right-click the table to craft. Left-click a recent item to autofill the grid; right-click it to view its Polydex page. Opening Polydex or another inventory from the crafting screen returns any remaining ingredients to your inventory. Closing that screen returns to the table with an empty grid and refreshed recent items, provided the table is still loaded and nearby. Nested screens stay open until you finish using them. Closing the crafting screen itself exits normally, as do Polydex and inventories opened independently.
 
+## Crafting restrictions
+
+On first startup, `config/polycraftingtable.json` is created with:
+
+```json
+{
+  "vanillaCraftingExemptions": [
+    "minecraft:",
+    "polycraftingtable:"
+  ],
+  "restrictedRecipeIds": []
+}
+```
+
+**Defaults changed in 0.1.7:** only Minecraft and this mod's output items are exempt.
+Other mods' crafting outputs are restricted to the custom table by default, whether or not they use Polymer.
+
+Rule priority:
+
+1. An exact recipe ID in `restrictedRecipeIds` is blocked in vanilla, even if its output is exempt.
+2. Otherwise, a matching output item or namespace in `vanillaCraftingExemptions` allows vanilla crafting.
+3. Everything else is restricted to the custom table.
+
+Examples:
+
+- `some_mod:` exempts all registered output items in that namespace.
+- `some_mod:special_item` exempts just that item, not other items in the mod.
+- `polycraftingtable:polymer_crafting_table` can replace `polycraftingtable:` if only the table should be exempt.
+- Putting `minecraft:diamond_from_coal` in `restrictedRecipeIds` blocks that specific recipe, if installed, even though `minecraft:` outputs are exempt. Other diamond recipes are unaffected.
+
+Exemptions match the **real output item ID**, not the recipe's namespace or Polymer's client-side disguise.
+Custom component-based items that genuinely use an ID such as `minecraft:paper` also match `minecraft:`;
+use exact recipe restrictions to block those individually. Recipe restrictions require full IDs: no namespace shortcuts, wildcards, tags, or component matching.
+
+Restart the server or game to apply edits; `/reload` does not reload this configuration.
+Existing files are never rewritten, and empty lists are respected. Both fields are required.
+Invalid JSON, unknown fields, wrong types, or malformed rules stop initialization with an error naming the file.
+Unknown but valid IDs/namespaces are retained and warned about once registries and datapacks are available.
+Remove an exemption to restrict it, rather than expecting removed defaults to be added back automatically.
+
+Restrictions affect standard crafting recipes, not smelting, stonecutting, or smithing.
+The custom table and Polydex remain unfiltered, and saved recipe unlocks are preserved.
+Allowed book entries still follow normal unlock rules. Unresolved or mixed allowed/restricted output displays
+are hidden conservatively from the vanilla book; valid-input crafting is evaluated independently.
+Other mods' independent machines that bypass vanilla lookups are not guaranteed to follow these rules.
+
 ## Build
 
 GitHub Actions builds the mod on pushes and pull requests. Download the JAR from the `polymer-crafting-table` artifact in a workflow run.
+
+The build also runs configuration/policy unit checks and verifies hook contracts against the pinned Minecraft
+bytecode. Reports are in `crafting-policy-test-reports`. These checks do not boot Minecraft or apply Fabric
+mixins in a running game, and no Fabric GameTests are included.
 
 ## Requirements
 

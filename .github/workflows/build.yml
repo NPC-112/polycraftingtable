@@ -29,6 +29,17 @@ jobs:
       - name: Build Fabric mod
         run: gradle --no-daemon build
 
+      - name: Verify pinned crafting hook contracts
+        run: python3 scripts/verify_recipe_hooks.py
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crafting-policy-test-reports
+          path: build/reports/tests/test/
+          if-no-files-found: ignore
+
       - name: Upload mod jars
         uses: actions/upload-artifact@v7
         with:

@@ -6,6 +6,7 @@
   "mixins": [
     "RecipeManagerAccessor",
     "RecipeManagerMixin",
+    "CrafterBlockMixin",
     "ServerRecipeBookMixin",
     "PolydexRecipePageAccessor",
     "ServerPlayerMenuMixin"

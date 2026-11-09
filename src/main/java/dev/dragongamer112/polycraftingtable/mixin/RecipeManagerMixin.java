@@ -1,6 +1,7 @@
 package dev.dragongamer112.polycraftingtable.mixin;
 
-import dev.dragongamer112.polycraftingtable.PolymerRecipes;
+import dev.dragongamer112.polycraftingtable.VanillaCraftingLookup;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
@@ -19,7 +20,7 @@ import java.util.Optional;
 public abstract class RecipeManagerMixin {
     @Inject(
             method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;)Ljava/util/Optional;",
-            at = @At("RETURN"),
+            at = @At("HEAD"),
             cancellable = true
     )
     private <I extends RecipeInput, T extends Recipe<I>> void polycraftingtable$filterVanillaLookup(
@@ -28,12 +29,12 @@ public abstract class RecipeManagerMixin {
             Level level,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(input, cir);
+        filterResult(type, input, level, cir);
     }
 
     @Inject(
             method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;Lnet/minecraft/resources/ResourceKey;)Ljava/util/Optional;",
-            at = @At("RETURN"),
+            at = @At("HEAD"),
             cancellable = true
     )
     private <I extends RecipeInput, T extends Recipe<I>> void polycraftingtable$filterHintedVanillaLookup(
@@ -43,12 +44,12 @@ public abstract class RecipeManagerMixin {
             ResourceKey<Recipe<?>> recipeHint,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(input, cir);
+        filterResult(type, input, level, cir);
     }
 
     @Inject(
             method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/crafting/RecipeHolder;)Ljava/util/Optional;",
-            at = @At("RETURN"),
+            at = @At("HEAD"),
             cancellable = true
     )
     private <I extends RecipeInput, T extends Recipe<I>> void polycraftingtable$filterCachedVanillaLookup(
@@ -58,17 +59,19 @@ public abstract class RecipeManagerMixin {
             RecipeHolder<T> recipeHint,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        filterResult(input, cir);
+        filterResult(type, input, level, cir);
     }
 
-    private static <I extends RecipeInput, T extends Recipe<I>> void filterResult(
-            I input, CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private <I extends RecipeInput, T extends Recipe<I>> void filterResult(
+            RecipeType<T> type, I input, Level level,
+            CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir
     ) {
-        var result = cir.getReturnValue();
-        if (result.isPresent()
-                && result.get().value().getType().equals(RecipeType.CRAFTING)
-                && PolymerRecipes.isPolymerOutput(result.get().value().assemble(input))) {
-            cir.setReturnValue(Optional.empty());
+        if (type.equals(RecipeType.CRAFTING) && input instanceof CraftingInput craftingInput) {
+            // All overloads use the same ordered selection; neither a stale hint
+            // nor a restricted first match may bypass or conceal allowed recipes.
+            cir.setReturnValue((Optional) VanillaCraftingLookup.matchingRecipe(
+                    (RecipeManager) (Object) this, craftingInput, level));
         }
     }
 }

@@ -59,6 +59,7 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        CraftingRestrictions.initialize();
         PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);
         // Use ITEM_NAME, not CUSTOM_NAME: anvil names must still take precedence.

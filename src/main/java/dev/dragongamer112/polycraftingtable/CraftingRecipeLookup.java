@@ -18,7 +18,7 @@ final class CraftingRecipeLookup {
             RecipeManager manager, CraftingInput input, Level level
     ) {
         // Read the complete registry directly: ordinary lookup intentionally hides
-        // Polymer results. Keep registry order for the same first-match priority.
+        // restricted outputs. Keep registry order for the same first-match priority.
         var recipes = ((RecipeManagerAccessor) manager)
                 .polycraftingtable$getRecipes()
                 .byType(RecipeType.CRAFTING);

@@ -30,6 +30,11 @@ dependencies {
     compileOnly "eu.pb4:polymer-resource-pack:${project.polymer_version}"
     compileOnly "eu.pb4:sgui:${project.sgui_version}"
     compileOnly "maven.modrinth:polydex:${project.polydex_version}"
+
+    testImplementation platform("org.junit:junit-bom:5.12.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "com.google.code.gson:gson:2.14.0"
 }
 
 processResources {
@@ -47,4 +52,11 @@ tasks.withType(JavaCompile).configureEach {
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
     withSourcesJar()
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
