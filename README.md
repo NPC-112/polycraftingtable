@@ -7,13 +7,14 @@ Was mainly made to reduce the chances of a player getting a recipe book packet b
 
 I am sorry this is vibecoded. Use at your own risk
 
-No crafting recipe yet.
-
 Operators can get the table with:
 
 ```Command
 /give @s polycraftingtable:polymer_crafting_table
 ```
+
+Craft it with one vanilla crafting table and one book in any two slots of a crafting grid.
+The recipe is also unlocked in the vanilla recipe book once you have both ingredients.
 
 ## Features
 
