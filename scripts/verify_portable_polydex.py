@@ -1,0 +1,110 @@
+"""Validate portable Polydex recipes and the inventory-return wiring."""
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "src/main/resources/data/polycraftingtable"
+
+
+def check(condition, message):
+    if not condition:
+        raise SystemExit(f"FAIL {message}")
+    print(f"PASS {message}")
+
+
+def recipe(name):
+    return json.loads((DATA / "recipe" / f"{name}.json").read_text())
+
+
+def advancement(name):
+    return json.loads(
+        (DATA / "advancement/recipes/misc" / f"{name}.json").read_text()
+    )
+
+
+def verify_recipe(name, ingredients):
+    value = recipe(name)
+    check(value.get("type") == "minecraft:crafting_shapeless",
+          f"{name} is shapeless")
+    check(value.get("ingredients") == ingredients,
+          f"{name} has the expected ingredients")
+    check(value.get("result") == {"id": "polycraftingtable:polydex", "count": 1},
+          f"{name} produces one Polydex item")
+
+    unlock = advancement(name)
+    criteria = unlock.get("criteria", {})
+    ingredient_criterion = next(
+        (criterion for key, criterion in criteria.items() if key != "has_the_recipe"),
+        {},
+    )
+    check(unlock.get("parent") == "minecraft:recipes/root",
+          f"{name} advancement joins the recipe book tree")
+    check(criteria.get("has_the_recipe", {}).get("conditions", {}).get("recipes")
+          == f"polycraftingtable:{name}",
+          f"{name} advancement unlocks the correct recipe ID")
+    check(ingredient_criterion.get("trigger") == "minecraft:inventory_changed"
+          and ingredient_criterion.get("conditions", {}).get("items")
+          == [{"items": item} for item in ingredients],
+          f"{name} advancement checks its ingredients")
+    check(unlock.get("rewards", {}).get("recipes") == [f"polycraftingtable:{name}"],
+          f"{name} advancement grants the recipe")
+
+
+table_recipe = json.loads(
+    (DATA / "recipe/polymer_crafting_table.json").read_text()
+)
+check(table_recipe.get("ingredients") == ["polycraftingtable:polydex"],
+      "the Polymer Crafting Table requires one Polydex item")
+check(table_recipe.get("result") == {
+    "id": "polycraftingtable:polymer_crafting_table",
+    "count": 1,
+}, "the Polydex item recipe produces one Polymer Crafting Table")
+
+verify_recipe(
+    "polydex_from_vanilla_table",
+    ["minecraft:book", "minecraft:crafting_table"],
+)
+verify_recipe(
+    "polydex_from_polymer_table",
+    ["polycraftingtable:polymer_crafting_table"],
+)
+
+mod_json = json.loads((ROOT / "src/main/resources/fabric.mod.json").read_text())
+check("dev.dragongamer112.polycraftingtable.PolyCraftingTableClient"
+      in mod_json.get("entrypoints", {}).get("client", []),
+      "client entrypoint registers the inventory-return receiver")
+
+mixins = json.loads((ROOT / "src/main/resources/polycraftingtable.mixins.json").read_text())
+check("InventoryMenuMixin" in mixins.get("mixins", []),
+      "inventory click interception is registered")
+
+item_source = (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolydexItem.java"
+).read_text()
+check("super(properties, Items.KNOWLEDGE_BOOK)" in item_source,
+      "Polymer disguises the item as a knowledge book")
+check("PolyCraftingTableMod.openPolydexFromHand(serverPlayer)" in item_source,
+      "hand use opens Polydex without consuming the item")
+
+click_source = (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/mixin/InventoryMenuMixin.java"
+).read_text()
+check("input != ContainerInput.PICKUP" in click_source
+      and "button != 1" in click_source
+      and "PolydexReturnSession.openFromInventory(serverPlayer)" in click_source
+      and "ci.cancel()" in click_source,
+      "right-clicking the inventory item opens Polydex without moving it")
+
+session_source = (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolydexReturnSession.java"
+).read_text()
+check("ReturnTarget.PLAYER_INVENTORY" in session_source
+      and "ServerPlayNetworking.send(player, OpenPlayerInventoryPayload.INSTANCE)" in session_source,
+      "inventory-origin sessions request the player inventory on exit")
+
+client_source = (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolyCraftingTableClient.java"
+).read_text()
+check("new InventoryScreen(context.player())" in client_source,
+      "the client receiver reopens the player inventory")
+print("PASS portable Polydex recipe and interaction contracts")

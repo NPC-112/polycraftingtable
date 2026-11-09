@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "polycraftingtable:polymer_crafting_table"
+  ],
+  "result": {
+    "id": "polycraftingtable:polydex",
+    "count": 1
+  }
+}

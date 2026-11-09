@@ -1,4 +1,6 @@
 {
   "block.polycraftingtable.polymer_crafting_table": "Polymer Crafting Table",
-  "item.polycraftingtable.polymer_crafting_table": "Polymer Crafting Table"
+  "item.polycraftingtable.polymer_crafting_table": "Polymer Crafting Table",
+  "item.polycraftingtable.polydex": "Polydex",
+  "message.polycraftingtable.client_required": "Install Polymer Crafting Table on your client to reopen the inventory here."
 }

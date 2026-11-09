@@ -7,14 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_both_ingredients": {
+    "has_polydex": {
       "conditions": {
         "items": [
           {
-            "items": "minecraft:crafting_table"
-          },
-          {
-            "items": "minecraft:book"
+            "items": "polycraftingtable:polydex"
           }
         ]
       },
@@ -24,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_both_ingredients"
+      "has_polydex"
     ]
   ],
   "rewards": {

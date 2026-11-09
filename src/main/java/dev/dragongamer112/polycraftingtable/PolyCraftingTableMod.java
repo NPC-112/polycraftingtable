@@ -3,6 +3,7 @@ package dev.dragongamer112.polycraftingtable;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -36,6 +37,10 @@ public final class PolyCraftingTableMod implements ModInitializer {
     static final Component TABLE_NAME = Component.translatableWithFallback(
             "block.polycraftingtable.polymer_crafting_table", "Polymer Crafting Table"
     );
+    public static final Identifier POLYDEX_ID = Identifier.fromNamespaceAndPath(MOD_ID, "polydex");
+    static final Component POLYDEX_NAME = Component.translatableWithFallback(
+            "item.polycraftingtable.polydex", "Polydex"
+    );
     static final AttachmentType<List<Identifier>> RECENT_ITEM_IDS = AttachmentRegistry.createPersistent(
             Identifier.fromNamespaceAndPath(MOD_ID, "recent_item_ids"),
             Identifier.CODEC.listOf()
@@ -61,9 +66,18 @@ public final class PolyCraftingTableMod implements ModInitializer {
                     Items.CRAFTING_TABLE
             )
     );
+    public static final Item POLYDEX_ITEM = Registry.register(
+            BuiltInRegistries.ITEM,
+            POLYDEX_ID,
+            new PolydexItem(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, POLYDEX_ID)))
+    );
 
     @Override
     public void onInitialize() {
+        PayloadTypeRegistry.clientboundPlay().register(
+                OpenPlayerInventoryPayload.TYPE,
+                OpenPlayerInventoryPayload.CODEC
+        );
         CraftingRestrictions.initialize();
         PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);
@@ -72,14 +86,24 @@ public final class PolyCraftingTableMod implements ModInitializer {
         DefaultItemComponentEvents.MODIFY.register(context -> context.modify(
                 TABLE_ITEM, builder -> builder.set(DataComponents.ITEM_NAME, TABLE_NAME)
         ));
+        DefaultItemComponentEvents.MODIFY.register(context -> context.modify(
+                POLYDEX_ITEM, builder -> builder.set(DataComponents.ITEM_NAME, POLYDEX_NAME)
+        ));
         CreativeModeTabEvents.modifyOutputEvent(
                 CreativeModeTabs.FUNCTIONAL_BLOCKS
         ).register(entries -> entries.accept(TABLE_ITEM));
+        CreativeModeTabEvents.modifyOutputEvent(
+                CreativeModeTabs.TOOLS_AND_UTILITIES
+        ).register(entries -> entries.accept(POLYDEX_ITEM));
 
         LOGGER.info("Polymer Crafting Table initialized.");
     }
 
     static void openPolydexMenu(ServerPlayer player, BlockPos pos) {
         PolydexReturnSession.openMain(player, pos);
+    }
+
+    static void openPolydexFromHand(ServerPlayer player) {
+        PolydexReturnSession.openFromHand(player);
     }
 }

@@ -2,8 +2,7 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    "minecraft:crafting_table",
-    "minecraft:book"
+    "polycraftingtable:polydex"
   ],
   "result": {
     "id": "polycraftingtable:polymer_crafting_table",
