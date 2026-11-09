@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 public final class PolyCraftingTableMod implements ModInitializer {
     public static final String MOD_ID = "polycraftingtable";
@@ -38,6 +39,10 @@ public final class PolyCraftingTableMod implements ModInitializer {
     static final AttachmentType<List<Identifier>> RECENT_ITEM_IDS = AttachmentRegistry.createPersistent(
             Identifier.fromNamespaceAndPath(MOD_ID, "recent_item_ids"),
             Identifier.CODEC.listOf()
+    );
+    static final AttachmentType<Map<String, String>> LAST_FILLED_RECIPE_IDS = AttachmentRegistry.createPersistent(
+            Identifier.fromNamespaceAndPath(MOD_ID, "last_filled_recipe_ids"),
+            Codec.unboundedMap(Codec.STRING, Codec.STRING)
     );
     public static final Block TABLE = Registry.register(
             BuiltInRegistries.BLOCK,

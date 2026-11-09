@@ -37,5 +37,5 @@ check(advancement.get("requirements") == [["has_the_recipe", "has_both_ingredien
 
 version = next(line.split("=", 1)[1] for line in (ROOT / "gradle.properties").read_text().splitlines()
                if line.startswith("mod_version="))
-check(version == "0.17.1", "mod version is 0.17.1")
+check(version == "0.17.2", "mod version is 0.17.2")
 print("PASS table recipe and advancement JSON parsed successfully")

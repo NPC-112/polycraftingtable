@@ -8,10 +8,10 @@ import net.minecraft.world.item.crafting.ShapelessRecipe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /** Plans recipe placements without changing the player's inventory. */
 final class RecipeAutofill {
@@ -46,9 +46,12 @@ final class RecipeAutofill {
         return false;
     }
 
-    static Optional<Plan> plan(CraftingRecipe recipe, List<ItemStack> inventory) {
-        if (!supports(recipe) || inventory.size() < INVENTORY_SIZE) {
-            return Optional.empty();
+    static PlanResult plan(CraftingRecipe recipe, List<ItemStack> inventory, List<ItemStack> grid) {
+        if (!supports(recipe)) {
+            return new PlanResult(null, Failure.UNSUPPORTED);
+        }
+        if (inventory.size() < INVENTORY_SIZE || grid.size() != GRID_SIZE) {
+            return new PlanResult(null, Failure.UNSUPPORTED);
         }
 
         List<PlacementRequirement> requirements = new ArrayList<>();
@@ -58,45 +61,61 @@ final class RecipeAutofill {
             List<Optional<Ingredient>> ingredients = shaped.getIngredients();
             if (width < 1 || width > 3 || height < 1 || height > 3
                     || ingredients.size() != width * height) {
-                return Optional.empty();
+                return new PlanResult(null, Failure.UNSUPPORTED);
             }
 
             for (int index = 0; index < ingredients.size(); index++) {
                 Optional<Ingredient> ingredient = ingredients.get(index);
                 if (ingredient.isPresent() && !ingredient.get().isEmpty()) {
                     int gridSlot = (index / width) * 3 + index % width;
-                    requirements.add(new PlacementRequirement(gridSlot, ingredient.get()));
+                    requirements.add(new PlacementRequirement(gridSlot, ingredient.get()::test));
                 }
             }
         } else if (recipe instanceof ShapelessRecipe shapeless) {
             List<Ingredient> ingredients = shapeless.placementInfo().ingredients();
             if (ingredients.size() > GRID_SIZE) {
-                return Optional.empty();
+                return new PlanResult(null, Failure.UNSUPPORTED);
             }
             for (int index = 0; index < ingredients.size(); index++) {
                 Ingredient ingredient = ingredients.get(index);
                 if (!ingredient.isEmpty()) {
-                    requirements.add(new PlacementRequirement(index, ingredient));
+                    requirements.add(new PlacementRequirement(index, ingredient::test));
                 }
             }
         } else {
-            // Special and custom recipe implementations may compute their inputs dynamically.
-            return Optional.empty();
+            return new PlanResult(null, Failure.UNSUPPORTED);
         }
 
-        if (requirements.isEmpty()) {
-            return Optional.empty();
+        return planRequirements(requirements, inventory, grid);
+    }
+
+    static PlanResult planRequirements(
+            List<PlacementRequirement> requirements,
+            List<ItemStack> inventory,
+            List<ItemStack> grid
+    ) {
+        if (requirements.isEmpty() || requirements.size() > GRID_SIZE
+                || inventory.size() < INVENTORY_SIZE || grid.size() != GRID_SIZE) {
+            return new PlanResult(null, Failure.UNSUPPORTED);
+        }
+
+        List<ItemStack> sources = new ArrayList<>(INVENTORY_SIZE + GRID_SIZE);
+        for (int slot = 0; slot < INVENTORY_SIZE; slot++) {
+            sources.add(inventory.get(slot).copy());
+        }
+        for (int slot = 0; slot < GRID_SIZE; slot++) {
+            sources.add(grid.get(slot).copy());
         }
 
         List<InventoryUnit> units = new ArrayList<>();
-        for (int slot = 0; slot < INVENTORY_SIZE; slot++) {
-            ItemStack stack = inventory.get(slot);
+        for (int sourceIndex = 0; sourceIndex < sources.size(); sourceIndex++) {
+            ItemStack stack = sources.get(sourceIndex);
             if (stack.isEmpty()) {
                 continue;
             }
             int availableUnits = Math.min(stack.getCount(), requirements.size());
             for (int unit = 0; unit < availableUnits; unit++) {
-                units.add(new InventoryUnit(slot, stack));
+                units.add(new InventoryUnit(sourceIndex, stack));
             }
         }
 
@@ -104,7 +123,7 @@ final class RecipeAutofill {
         for (PlacementRequirement requirement : requirements) {
             List<Integer> candidates = new ArrayList<>();
             for (int unit = 0; unit < units.size(); unit++) {
-                if (requirement.ingredient().test(units.get(unit).stack())) {
+                if (requirement.matches().test(units.get(unit).stack())) {
                     candidates.add(unit);
                 }
             }
@@ -132,27 +151,76 @@ final class RecipeAutofill {
             }
         }
 
+        if (Arrays.stream(requirementToUnit).anyMatch(unit -> unit < 0)) {
+            return new PlanResult(null, Failure.MISSING_INGREDIENTS);
+        }
+
         List<ItemStack> grid = new ArrayList<>(GRID_SIZE);
         for (int slot = 0; slot < GRID_SIZE; slot++) {
             grid.add(ItemStack.EMPTY);
         }
-        List<Integer> consumedBySlot = new ArrayList<>(Collections.nCopies(INVENTORY_SIZE, 0));
-
-        int filled = 0;
+        int[] consumedBySource = new int[sources.size()];
         for (int index = 0; index < requirements.size(); index++) {
             int unit = requirementToUnit[index];
-            if (unit < 0) {
-                continue;
-            }
-            InventoryUnit source = units.get(unit);
-            ItemStack placed = inventory.get(source.slot()).copy();
+            ItemStack source = sources.get(units.get(unit).sourceIndex());
+            ItemStack placed = source.copy();
             placed.setCount(1);
             grid.set(requirements.get(index).gridSlot(), placed);
-            consumedBySlot.set(source.slot(), consumedBySlot.get(source.slot()) + 1);
-            filled++;
+            consumedBySource[units.get(unit).sourceIndex()]++;
         }
 
-        return Optional.of(new Plan(grid, consumedBySlot, filled, requirements.size()));
+        List<ItemStack> updatedInventory = new ArrayList<>(INVENTORY_SIZE);
+        for (int slot = 0; slot < INVENTORY_SIZE; slot++) {
+            ItemStack remaining = inventory.get(slot).copy();
+            remaining.shrink(consumedBySource[slot]);
+            updatedInventory.add(remaining.isEmpty() ? ItemStack.EMPTY : remaining);
+        }
+
+        for (int slot = 0; slot < GRID_SIZE; slot++) {
+            ItemStack source = sources.get(INVENTORY_SIZE + slot);
+            ItemStack remaining = source.copy();
+            remaining.shrink(consumedBySource[INVENTORY_SIZE + slot]);
+            if (!remaining.isEmpty() && !insertIntoInventory(updatedInventory, remaining)) {
+                return new PlanResult(null, Failure.NO_INVENTORY_SPACE);
+            }
+        }
+
+        return new PlanResult(new Plan(List.copyOf(grid), List.copyOf(updatedInventory), requirements.size()),
+                Failure.NONE);
+    }
+
+    private static boolean insertIntoInventory(List<ItemStack> inventory, ItemStack stack) {
+        ItemStack remaining = stack.copy();
+
+        for (int slot = 0; slot < inventory.size() && !remaining.isEmpty(); slot++) {
+            ItemStack existing = inventory.get(slot);
+            if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, remaining)) {
+                continue;
+            }
+
+            int capacity = Math.max(0, existing.getMaxStackSize() - existing.getCount());
+            int moved = Math.min(capacity, remaining.getCount());
+            if (moved > 0) {
+                ItemStack merged = existing.copy();
+                merged.grow(moved);
+                inventory.set(slot, merged);
+                remaining.shrink(moved);
+            }
+        }
+
+        for (int slot = 0; slot < inventory.size() && !remaining.isEmpty(); slot++) {
+            if (!inventory.get(slot).isEmpty()) {
+                continue;
+            }
+
+            int moved = Math.min(remaining.getMaxStackSize(), remaining.getCount());
+            ItemStack placed = remaining.copy();
+            placed.setCount(moved);
+            inventory.set(slot, placed);
+            remaining.shrink(moved);
+        }
+
+        return remaining.isEmpty();
     }
 
     private static boolean tryAssign(
@@ -176,12 +244,25 @@ final class RecipeAutofill {
         return false;
     }
 
-    record Plan(List<ItemStack> grid, List<Integer> consumedByInventorySlot, int filled, int required) {
+    enum Failure {
+        NONE,
+        UNSUPPORTED,
+        MISSING_INGREDIENTS,
+        NO_INVENTORY_SPACE
     }
 
-    private record PlacementRequirement(int gridSlot, Ingredient ingredient) {
+    record PlanResult(Plan plan, Failure failure) {
+        boolean succeeded() {
+            return this.plan != null && this.failure == Failure.NONE;
+        }
     }
 
-    private record InventoryUnit(int slot, ItemStack stack) {
+    record Plan(List<ItemStack> grid, List<ItemStack> inventory, int required) {
+    }
+
+    record PlacementRequirement(int gridSlot, Predicate<ItemStack> matches) {
+    }
+
+    private record InventoryUnit(int sourceIndex, ItemStack stack) {
     }
 }
