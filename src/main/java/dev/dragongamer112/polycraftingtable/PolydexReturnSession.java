@@ -30,12 +30,12 @@ public final class PolydexReturnSession {
     }
 
     static void openMain(ServerPlayer player, BlockPos pos) {
-        open(player, new Session(player, player.level(), pos.immutable(), ReturnTarget.TABLE),
+        open(player, new Session(player, player.level(), pos.immutable()),
                 () -> PolydexMenu.openMainMenu(player));
     }
 
     static void openEntry(ServerPlayer player, BlockPos pos, PolydexEntry entry) {
-        open(player, new Session(player, player.level(), pos.immutable(), ReturnTarget.TABLE),
+        open(player, new Session(player, player.level(), pos.immutable()),
                 () -> PolydexMenu.openEntryPage(player, entry));
     }
 
