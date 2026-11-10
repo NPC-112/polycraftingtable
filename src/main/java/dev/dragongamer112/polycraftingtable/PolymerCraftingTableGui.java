@@ -95,13 +95,14 @@ final class PolymerCraftingTableGui extends SimpleGui {
             this.setSlot(FIRST_RECENT_SLOT + index, new GuiElementBuilder(recent.icon().copy())
                     .setName(recent.icon().getHoverName())
                     .setCallback((slot, clickType, action, gui) -> {
-                        if (action != ContainerInput.PICKUP) {
+                        if (action != ContainerInput.PICKUP
+                                && action != ContainerInput.QUICK_MOVE) {
                             return;
                         }
-                        if (clickType.isRight) {
+                        if (clickType.isRight && !clickType.shift) {
                             this.openRecentEntryInPolydex(recent.entry());
                         } else {
-                            this.autofillFromInventory(recent);
+                            this.autofillFromInventory(recent, clickType.shift);
                         }
                     })
                     .build());
@@ -120,7 +121,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
         return this.pos;
     }
 
-    private void autofillFromInventory(PolydexMenu.RecentRecipe recent) {
+    private void autofillFromInventory(PolydexMenu.RecentRecipe recent, boolean fillMultiple) {
         List<ItemStack> inventoryBefore = this.inventorySnapshot();
         List<ItemStack> gridBefore = this.inputSnapshot();
         Identifier previousRecipeId = this.sessionLastFilledRecipes.get(recent.entryId());
@@ -151,11 +152,9 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 continue;
             }
 
-            RecipeAutofill.PlanResult attempt = RecipeAutofill.plan(
-                    candidate.recipe(),
-                    inventoryBefore,
-                    gridBefore
-            );
+            RecipeAutofill.PlanResult attempt = fillMultiple
+                    ? RecipeAutofill.planMaximum(candidate.recipe(), inventoryBefore, gridBefore)
+                    : RecipeAutofill.plan(candidate.recipe(), inventoryBefore, gridBefore);
             if (attempt.succeeded()
                     && candidate.recipe().matches(craftingInput(attempt.plan().grid()), this.player.level())) {
                 selected = candidate;
@@ -219,7 +218,11 @@ final class PolymerCraftingTableGui extends SimpleGui {
         this.sessionLastFilledRecipes.put(recent.entryId(), selected.id());
         PolydexMenu.rememberFilledRecipe(this.player, recent.entryId(), selected.id());
         this.updateResult();
-        this.player.sendOverlayMessage(Component.literal("Filled recipe " + selected.id() + "."));
+        this.player.sendOverlayMessage(Component.literal(
+                fillMultiple
+                        ? "Filled recipe " + selected.id() + " for " + selectedPlan.crafts() + " crafts."
+                        : "Filled recipe " + selected.id() + "."
+        ));
     }
 
     private void openRecentEntryInPolydex(PolydexEntry entry) {
@@ -287,11 +290,148 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
         this.setSlot(RESULT_SLOT, new GuiElementBuilder(output.copy())
                 .setCallback((index, clickType, action, gui) -> {
-                    if (action == ContainerInput.PICKUP || action == ContainerInput.QUICK_MOVE) {
+                    if (action == ContainerInput.QUICK_MOVE && clickType.shift) {
+                        this.craftMany(this.player);
+                    } else if (action == ContainerInput.PICKUP || action == ContainerInput.QUICK_MOVE) {
                         this.craftOne(this.player);
                     }
                 })
                 .build());
+    }
+
+    private void craftMany(ServerPlayer player) {
+        List<ItemStack> gridBefore = this.inputSnapshot();
+        Optional<RecipeHolder<CraftingRecipe>> match =
+                this.matchingRecipe(craftingInput(gridBefore));
+        if (match.isEmpty()) {
+            this.updateResult();
+            return;
+        }
+
+        RecipeHolder<CraftingRecipe> recipe = match.get();
+        ItemStack firstOutput = recipe.value().assemble(craftingInput(gridBefore));
+        if (firstOutput.isEmpty()) {
+            this.updateResult();
+            return;
+        }
+        if (firstOutput.getMaxStackSize() <= 1) {
+            this.craftOne(player);
+            return;
+        }
+
+        int maxCrafts = Integer.MAX_VALUE;
+        for (ItemStack stack : gridBefore) {
+            if (!stack.isEmpty()) {
+                maxCrafts = Math.min(maxCrafts, stack.getCount());
+            }
+        }
+        if (maxCrafts == Integer.MAX_VALUE || maxCrafts < 1) {
+            this.updateResult();
+            return;
+        }
+
+        List<ItemStack> inventoryBefore = this.inventorySnapshot();
+        List<ItemStack> plannedInventory = copyStacks(inventoryBefore);
+        List<ItemStack> plannedGrid = copyStacks(gridBefore);
+        List<CraftRecord> completedCrafts = new ArrayList<>(maxCrafts);
+
+        for (int craft = 0; craft < maxCrafts; craft++) {
+            CraftingInput currentInput = craftingInput(plannedGrid);
+            if (!recipe.value().matches(currentInput, player.level())) {
+                break;
+            }
+
+            ItemStack output = recipe.value().assemble(currentInput);
+            if (output.isEmpty()
+                    || output.getMaxStackSize() <= 1
+                    || !ItemStack.isSameItemSameComponents(firstOutput, output)) {
+                break;
+            }
+
+            List<ItemStack> remainders = recipe.value().getRemainingItems(currentInput).stream()
+                    .map(ItemStack::copy)
+                    .toList();
+            List<ItemStack> nextInventory = copyStacks(plannedInventory);
+            if (!this.insertCraftResults(nextInventory, output, remainders)) {
+                break;
+            }
+
+            plannedInventory = nextInventory;
+            completedCrafts.add(new CraftRecord(output.copy(), copyStacks(plannedGrid)));
+            for (int slot = 0; slot < plannedGrid.size(); slot++) {
+                ItemStack ingredient = plannedGrid.get(slot);
+                if (!ingredient.isEmpty()) {
+                    ingredient.shrink(1);
+                    if (ingredient.isEmpty()) {
+                        plannedGrid.set(slot, ItemStack.EMPTY);
+                    }
+                }
+            }
+        }
+
+        if (completedCrafts.isEmpty()) {
+            player.sendOverlayMessage(Component.literal("Make room in your inventory to craft this."));
+            return;
+        }
+        if (!this.inputMatches(gridBefore) || !this.inventoryMatches(inventoryBefore)) {
+            this.updateResult();
+            player.sendOverlayMessage(Component.literal(
+                    "Your grid or inventory changed. Try crafting again."
+            ));
+            return;
+        }
+
+        boolean wasSuppressed = this.suppressResultUpdate;
+        boolean committed = true;
+        this.suppressResultUpdate = true;
+        try {
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, plannedGrid.get(slot).copy());
+            }
+            for (int slot = 0; slot < 36; slot++) {
+                player.getInventory().setItem(slot, plannedInventory.get(slot).copy());
+            }
+            if (!this.inputMatches(plannedGrid) || !this.inventoryMatches(plannedInventory)) {
+                throw new IllegalStateException("Shift-craft replacement did not match its plan.");
+            }
+        } catch (RuntimeException exception) {
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, gridBefore.get(slot).copy());
+            }
+            for (int slot = 0; slot < 36; slot++) {
+                player.getInventory().setItem(slot, inventoryBefore.get(slot).copy());
+            }
+            committed = false;
+        } finally {
+            this.suppressResultUpdate = wasSuppressed;
+        }
+
+        if (!committed) {
+            this.updateResult();
+            player.sendOverlayMessage(Component.literal(
+                    "The items could not be moved safely. No ingredients were consumed."
+            ));
+            return;
+        }
+
+        player.level().playSound(
+                null,
+                this.pos,
+                SoundEvents.UI_STONECUTTER_TAKE_RESULT,
+                SoundSource.BLOCKS,
+                1.0F,
+                1.0F
+        );
+        this.updateResult();
+
+        for (CraftRecord craft : completedCrafts) {
+            ItemStack craftedResult = craft.output().copy();
+            craftedResult.onCraftedBy(player, craftedResult.getCount());
+            player.triggerRecipeCrafted(recipe, craft.ingredients());
+            if (!recipe.value().isSpecial()) {
+                player.awardRecipes(List.of(recipe));
+            }
+        }
     }
 
     private void craftOne(ServerPlayer player) {
@@ -379,55 +519,75 @@ final class PolymerCraftingTableGui extends SimpleGui {
         return true;
     }
 
-    private boolean canFitCraft(ItemStack output, List<ItemStack> remainders) {
-        var inventory = this.player.getInventory();
-        List<ItemStack> simulatedInventory = new ArrayList<>(36);
-        for (int slot = 0; slot < 36; slot++) {
-            simulatedInventory.add(inventory.getItem(slot).copy());
+    private static List<ItemStack> copyStacks(List<ItemStack> stacks) {
+        List<ItemStack> copies = new ArrayList<>(stacks.size());
+        for (ItemStack stack : stacks) {
+            copies.add(stack.copy());
         }
+        return copies;
+    }
 
+    private record CraftRecord(ItemStack output, List<ItemStack> ingredients) {
+    }
+
+    private boolean canFitCraft(ItemStack output, List<ItemStack> remainders) {
+        return this.insertCraftResults(this.inventorySnapshot(), output, remainders);
+    }
+
+    private boolean insertCraftResults(
+            List<ItemStack> simulatedInventory,
+            ItemStack output,
+            List<ItemStack> remainders
+    ) {
         List<ItemStack> results = new ArrayList<>(remainders.size() + 1);
         results.add(output);
         results.addAll(remainders);
 
         for (ItemStack result : results) {
-            if (result.isEmpty()) {
-                continue;
-            }
-
-            ItemStack remaining = result.copy();
-            int slotLimit = Math.min(remaining.getMaxStackSize(), inventory.getMaxStackSize());
-            if (remaining.isStackable()) {
-                for (ItemStack existing : simulatedInventory) {
-                    if (!existing.isEmpty()
-                            && ItemStack.isSameItemSameComponents(existing, remaining)
-                            && existing.getCount() < slotLimit) {
-                        int moved = Math.min(remaining.getCount(), slotLimit - existing.getCount());
-                        existing.grow(moved);
-                        remaining.shrink(moved);
-                        if (remaining.isEmpty()) {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            for (int slot = 0; slot < simulatedInventory.size() && !remaining.isEmpty(); slot++) {
-                if (simulatedInventory.get(slot).isEmpty()) {
-                    int moved = Math.min(remaining.getCount(), slotLimit);
-                    ItemStack inserted = remaining.copy();
-                    inserted.setCount(moved);
-                    simulatedInventory.set(slot, inserted);
-                    remaining.shrink(moved);
-                }
-            }
-
-            if (!remaining.isEmpty()) {
+            if (!this.insertIntoInventory(simulatedInventory, result)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private boolean insertIntoInventory(List<ItemStack> simulatedInventory, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return true;
+        }
+
+        ItemStack remaining = stack.copy();
+        int slotLimit = Math.min(
+                remaining.getMaxStackSize(),
+                this.player.getInventory().getMaxStackSize()
+        );
+        if (remaining.getMaxStackSize() > 1) {
+            for (ItemStack existing : simulatedInventory) {
+                if (!existing.isEmpty()
+                        && ItemStack.isSameItemSameComponents(existing, remaining)
+                        && existing.getCount() < slotLimit) {
+                    int moved = Math.min(remaining.getCount(), slotLimit - existing.getCount());
+                    existing.grow(moved);
+                    remaining.shrink(moved);
+                    if (remaining.isEmpty()) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (int slot = 0; slot < simulatedInventory.size() && !remaining.isEmpty(); slot++) {
+            if (!simulatedInventory.get(slot).isEmpty()) {
+                continue;
+            }
+            int moved = Math.min(remaining.getCount(), slotLimit);
+            ItemStack inserted = remaining.copy();
+            inserted.setCount(moved);
+            simulatedInventory.set(slot, inserted);
+            remaining.shrink(moved);
+        }
+        return remaining.isEmpty();
     }
 
     @Override
