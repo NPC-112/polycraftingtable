@@ -3,7 +3,6 @@ package dev.dragongamer112.polycraftingtable;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -74,10 +73,6 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        PayloadTypeRegistry.clientboundPlay().register(
-                OpenPlayerInventoryPayload.TYPE,
-                OpenPlayerInventoryPayload.CODEC
-        );
         CraftingRestrictions.initialize();
         PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);

@@ -70,9 +70,13 @@ verify_recipe(
 )
 
 mod_json = json.loads((ROOT / "src/main/resources/fabric.mod.json").read_text())
-check("dev.dragongamer112.polycraftingtable.PolyCraftingTableClient"
-      in mod_json.get("entrypoints", {}).get("client", []),
-      "client entrypoint registers the inventory-return receiver")
+check(not mod_json.get("entrypoints", {}).get("client"),
+      "the mod does not require a client entrypoint")
+check(not (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolyCraftingTableClient.java"
+).exists() and not (
+    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/OpenPlayerInventoryPayload.java"
+).exists(), "client-only inventory-return code is removed")
 
 mixins = json.loads((ROOT / "src/main/resources/polycraftingtable.mixins.json").read_text())
 check("InventoryMenuMixin" in mixins.get("mixins", []),
@@ -99,16 +103,15 @@ check("input != ContainerInput.PICKUP" in click_source
 session_source = (
     ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolydexReturnSession.java"
 ).read_text()
-check("ReturnTarget.PLAYER_INVENTORY" in session_source
-      and "ServerPlayNetworking.send(player, OpenPlayerInventoryPayload.INSTANCE)" in session_source,
-      "inventory-origin sessions request the player inventory on exit")
 check("openFromMenu(ServerPlayer player)" in session_source
       and "open(player, null, () -> PolydexMenu.openMainMenu(player), true)" in session_source,
-      "other-menu opens do not request an inventory return")
-
-client_source = (
-    ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolyCraftingTableClient.java"
-).read_text()
-check("new InventoryScreen(context.player())" in client_source,
-      "the client receiver reopens the player inventory")
+      "inventory-item opens do not require client code or an inventory-return session")
+check("ServerPlayNetworking" not in session_source
+      and "PLAYER_INVENTORY" not in session_source,
+      "Polydex navigation no longer sends client-only return packets")
+language = json.loads(
+    (ROOT / "src/main/resources/assets/polycraftingtable/lang/en_us.json").read_text()
+)
+check("message.polycraftingtable.client_required" not in language,
+      "the client-install message is removed")
 print("PASS portable Polydex recipe and interaction contracts")

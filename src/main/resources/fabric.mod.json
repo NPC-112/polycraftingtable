@@ -10,9 +10,6 @@
   "entrypoints": {
     "main": [
       "dev.dragongamer112.polycraftingtable.PolyCraftingTableMod"
-    ],
-    "client": [
-      "dev.dragongamer112.polycraftingtable.PolyCraftingTableClient"
     ]
   },
   "mixins": [

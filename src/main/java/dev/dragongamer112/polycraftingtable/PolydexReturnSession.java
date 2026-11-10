@@ -4,7 +4,6 @@ import eu.pb4.polydex.api.v1.recipe.PolydexEntry;
 import eu.pb4.sgui.api.SguiUtils;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -51,26 +50,10 @@ public final class PolydexReturnSession {
         open(player, null, () -> PolydexMenu.openMainMenu(player));
     }
 
-    public static void openFromInventory(ServerPlayer player) {
-        if (!ServerPlayNetworking.canSend(player, OpenPlayerInventoryPayload.TYPE)) {
-            player.sendOverlayMessage(Component.translatableWithFallback(
-                    "message.polycraftingtable.client_required",
-                    "Install Polymer Crafting Table on your client to reopen the inventory here."
-            ));
-            return;
-        }
-        open(player, new Session(player, player.level(), null, ReturnTarget.PLAYER_INVENTORY),
-                () -> PolydexMenu.openMainMenu(player));
-    }
-
     /** Open Polydex from an item in any active menu; third-party menus are not restored. */
     public static void openFromMenu(ServerPlayer player) {
         if (SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui crafting) {
             openMain(player, crafting.tablePos());
-            return;
-        }
-        if (player.containerMenu == player.inventoryMenu) {
-            openFromInventory(player);
             return;
         }
         cancel(player);
@@ -169,11 +152,7 @@ public final class PolydexReturnSession {
                     // Two end-of-tick observations leave a full tick for
                     // Polydex's native Back/search navigation to settle.
                     if (SESSIONS.remove(player, session)) {
-                        if (session.returnTarget == ReturnTarget.TABLE) {
-                            new PolymerCraftingTableGui(player, session.pos);
-                        } else if (ServerPlayNetworking.canSend(player, OpenPlayerInventoryPayload.TYPE)) {
-                            ServerPlayNetworking.send(player, OpenPlayerInventoryPayload.INSTANCE);
-                        }
+                        new PolymerCraftingTableGui(player, session.pos);
                     }
                 } else {
                     session.exitObserved = true;
@@ -198,33 +177,21 @@ public final class PolydexReturnSession {
         if (!playerIsValid) {
             return false;
         }
-        return session.returnTarget == ReturnTarget.PLAYER_INVENTORY
-                || (player.position().distanceToSqr(Vec3.atCenterOf(session.pos)) <= 18 * 18
+        return player.position().distanceToSqr(Vec3.atCenterOf(session.pos)) <= 18 * 18
                 && session.level.hasChunkAt(session.pos)
-                && session.level.getBlockState(session.pos).is(PolyCraftingTableMod.TABLE));
-    }
-
-    private enum ReturnTarget {
-        TABLE,
-        PLAYER_INVENTORY
+                && session.level.getBlockState(session.pos).is(PolyCraftingTableMod.TABLE);
     }
 
     private static final class Session {
         private final ServerPlayer player;
         private final Level level;
-        private final ReturnTarget returnTarget;
         private final BlockPos pos;
         private boolean exitObserved;
 
         private Session(ServerPlayer player, Level level, BlockPos pos) {
-            this(player, level, pos, ReturnTarget.TABLE);
-        }
-
-        private Session(ServerPlayer player, Level level, BlockPos pos, ReturnTarget returnTarget) {
             this.player = player;
             this.level = level;
             this.pos = pos;
-            this.returnTarget = returnTarget;
         }
     }
 }
