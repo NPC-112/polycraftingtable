@@ -63,6 +63,20 @@ public final class PolydexReturnSession {
                 () -> PolydexMenu.openMainMenu(player));
     }
 
+    /** Open Polydex from an item in any active menu; third-party menus are not restored. */
+    public static void openFromMenu(ServerPlayer player) {
+        if (SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui crafting) {
+            openMain(player, crafting.tablePos());
+            return;
+        }
+        if (player.containerMenu == player.inventoryMenu) {
+            openFromInventory(player);
+            return;
+        }
+        cancel(player);
+        open(player, null, () -> PolydexMenu.openMainMenu(player), true);
+    }
+
     public static void cancel(ServerPlayer player) {
         SESSIONS.remove(player);
     }
@@ -86,12 +100,22 @@ public final class PolydexReturnSession {
     }
 
     private static void open(ServerPlayer player, Session session, BooleanSupplier openMenu) {
+        open(player, session, openMenu, false);
+    }
+
+    private static void open(
+            ServerPlayer player,
+            Session session,
+            BooleanSupplier openMenu,
+            boolean allowOtherMenus
+    ) {
         cancel(player);
         if (session != null && !validOrigin(session)) {
             return;
         }
         // These entry points may replace our crafting menu, not an unrelated GUI.
-        if (player.containerMenu != player.inventoryMenu
+        if (!allowOtherMenus
+                && player.containerMenu != player.inventoryMenu
                 && !(SguiUtils.getCurrentGui(player) instanceof PolymerCraftingTableGui)) {
             return;
         }

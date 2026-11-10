@@ -91,9 +91,10 @@ click_source = (
 ).read_text()
 check("input != ContainerInput.PICKUP" in click_source
       and "button != 1" in click_source
-      and "PolydexReturnSession.openFromInventory(serverPlayer)" in click_source
+      and "slotId >= ((AbstractContainerMenu) (Object) this).slots.size()" in click_source
+      and "PolydexReturnSession.openFromMenu(serverPlayer)" in click_source
       and "ci.cancel()" in click_source,
-      "right-clicking the inventory item opens Polydex without moving it")
+      "right-clicking the item in any menu opens Polydex without moving it")
 
 session_source = (
     ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolydexReturnSession.java"
@@ -101,6 +102,9 @@ session_source = (
 check("ReturnTarget.PLAYER_INVENTORY" in session_source
       and "ServerPlayNetworking.send(player, OpenPlayerInventoryPayload.INSTANCE)" in session_source,
       "inventory-origin sessions request the player inventory on exit")
+check("openFromMenu(ServerPlayer player)" in session_source
+      and "open(player, null, () -> PolydexMenu.openMainMenu(player), true)" in session_source,
+      "other-menu opens do not request an inventory return")
 
 client_source = (
     ROOT / "src/main/java/dev/dragongamer112/polycraftingtable/PolyCraftingTableClient.java"

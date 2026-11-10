@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.InventoryMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,18 +23,16 @@ public abstract class InventoryMenuMixin {
     ) {
         if (!(player instanceof ServerPlayer serverPlayer)
                 || player.containerMenu != (Object) this
-                || player.containerMenu != player.inventoryMenu
-                || !(player.inventoryMenu instanceof InventoryMenu)
                 || input != ContainerInput.PICKUP
                 || button != 1
-                || slotId < InventoryMenu.INV_SLOT_START
-                || slotId >= InventoryMenu.USE_ROW_SLOT_END) {
+                || slotId < 0
+                || slotId >= ((AbstractContainerMenu) (Object) this).slots.size()) {
             return;
         }
 
         if (((AbstractContainerMenu) (Object) this).getSlot(slotId).getItem()
                 .is(PolyCraftingTableMod.POLYDEX_ITEM)) {
-            PolydexReturnSession.openFromInventory(serverPlayer);
+            PolydexReturnSession.openFromMenu(serverPlayer);
             ci.cancel();
         }
     }
