@@ -1,30 +1,34 @@
 # PolyCraftingTable
 
-This mod restricts configured crafting recipes in vanilla crafting and its recipe book.
+This mod restricts configured crafting recipes from vanilla crafting and its recipe book and adds a new crafting table with extended features.
 The custom crafting table and Polydex retain access to every registered crafting recipe.
 
 Was mainly made to reduce the chances of a player getting a recipe book packet being too larger error (io.netty.handler.codec.EncoderException: java.lang.IllegalArgumentException: Packet too big ). This error isn't exclusive to recipe book packets players may receive as they unlock recipes, but this is the most common for me.
 
 I am sorry this is vibecoded. Use at your own risk
+- Multiple chances for lost items at the moment. Has stopped happening for me but not every mod does things the same way.
 
-Operators can get the table with:
+Operators can get the new items with commands:
 
 ```Command
 /give @s polycraftingtable:polymer_crafting_table
+/give @s polycraftingtable:polydex
 ```
 
-Craft it with one vanilla crafting table and one book in any two slots of a crafting grid.
-The recipe is also unlocked in the vanilla recipe book once you have both ingredients.
+Craft a Polydex with a minecraft:crafting_table and minecraft:book.
+Once you have a Polydex, you can convert it to and from a Polymer Crafting Table by placing it into a crafting grid. They are each others recipes.
+
+
+The recipe is also unlocked in the vanilla recipe book once you have the required ingredients.
 
 ## Features
 
 - Craft standard crafting recipes, including shaped, shapeless, and supported special recipes.
 - Configure vanilla crafting and recipe-book restrictions for any mod, not just Polymer.
-- Apply the same restrictions to the player crafting grid, vanilla crafting table, and automated Crafter.
 - Open Polydex from within the table or sneak-right-click the table with an empty hand.
-- Cycle through every supported, fully fillable recipe for recent Polydex items without changing Polydex.
-- Multiple chances for lost items at the moment. Has stopped happening for me but not every mod does things the same way.
-- Play on dedicated servers or in singleplayer.
+- Autofill recently viewed polydex recipes as long as the player has all the components.
+- If there are multiple possible recipes the player can currently craft for one item, selecting the recipe will cycle through filling each different recipe.
+- Runs on dedicated servers and/or singleplayer.
 
 ## Use
 
@@ -52,9 +56,6 @@ On first startup, `config/polycraftingtable.json` is created with:
   "restrictedRecipeIds": []
 }
 ```
-
-**Defaults changed in 0.1.7:** only Minecraft and this mod's output items are exempt.
-Other mods' crafting outputs are restricted to the custom table by default, whether or not they use Polymer.
 
 Rule priority:
 
