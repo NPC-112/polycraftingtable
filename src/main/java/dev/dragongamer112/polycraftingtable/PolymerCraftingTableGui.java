@@ -8,9 +8,10 @@ import eu.pb4.sgui.api.ClickType;
 import eu.pb4.sgui.api.elements.GuiElement;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
-import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -133,10 +134,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private static Identifier buttonModel(String name) {
-        return ResourcePackExtras.bridgeModel(Identifier.fromNamespaceAndPath(
+        return Identifier.fromNamespaceAndPath(
                 PolyCraftingTableMod.MOD_ID,
                 "sgui/elements/" + name
-        ));
+        );
     }
 
     private GuiElementBuilder buttonBuilder(Item item, String model) {
@@ -389,7 +390,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
         ItemStack craftedResult = selectedOutput.copy();
         craftedResult.onCraftedBy(this.player, craftedResult.getCount());
-        RecipeHolder<CraftingRecipe> recipe = new RecipeHolder<>(selected.id(), selected.recipe());
+        RecipeHolder<CraftingRecipe> recipe = new RecipeHolder<>(
+                ResourceKey.create(Registries.RECIPE, selected.id()),
+                selected.recipe()
+        );
         this.player.triggerRecipeCrafted(recipe, selectedIngredients);
         if (!selected.recipe().isSpecial()) {
             this.player.awardRecipes(List.of(recipe));
