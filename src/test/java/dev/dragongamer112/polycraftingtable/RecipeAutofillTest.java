@@ -113,6 +113,44 @@ final class RecipeAutofillTest {
     }
 
     @Test
+    void repeatedClickAddsOneMoreCraftUsingTheLoadedGridAndInventory() {
+        List<ItemStack> inventory = emptyStacks(36);
+        inventory.set(0, new ItemStack(Items.OAK_LOG, 4));
+        List<ItemStack> grid = emptyStacks(9);
+        grid.set(0, new ItemStack(Items.OAK_LOG, 1));
+        var oneLogRecipe = List.of(
+                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_LOG))
+        );
+
+        var result = RecipeAutofill.planRepeatedRequirements(
+                oneLogRecipe, inventory, grid, 2);
+
+        assertTrue(result.succeeded());
+        assertEquals(2, result.plan().crafts());
+        assertEquals(2, result.plan().grid().get(0).getCount());
+        assertEquals(3, result.plan().inventory().get(0).getCount());
+        assertEquals(1, grid.get(0).getCount());
+        assertEquals(4, inventory.get(0).getCount());
+    }
+
+    @Test
+    void repeatedClickLeavesLoadedCraftAndInventoryUntouchedWithoutAnotherIngredient() {
+        List<ItemStack> inventory = emptyStacks(36);
+        List<ItemStack> grid = emptyStacks(9);
+        grid.set(0, new ItemStack(Items.OAK_LOG, 1));
+        var oneLogRecipe = List.of(
+                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_LOG))
+        );
+
+        var result = RecipeAutofill.planRepeatedRequirements(
+                oneLogRecipe, inventory, grid, 2);
+
+        assertEquals(RecipeAutofill.Failure.MISSING_INGREDIENTS, result.failure());
+        assertEquals(1, grid.get(0).getCount());
+        assertTrue(inventory.stream().allMatch(ItemStack::isEmpty));
+    }
+
+    @Test
     void shiftAutofillUsesTheTightestRepeatedIngredient() {
         List<ItemStack> inventory = emptyStacks(36);
         inventory.set(0, new ItemStack(Items.OAK_PLANKS, 10));

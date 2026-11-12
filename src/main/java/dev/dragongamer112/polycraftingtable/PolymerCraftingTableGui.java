@@ -48,6 +48,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
     private final BlockPos pos;
     private final Map<Identifier, Identifier> sessionLastFilledRecipes = new HashMap<>();
+    private final Map<Identifier, LoadedRecipeState> sessionLoadedRecipes = new HashMap<>();
     private boolean instantCraftingEnabled;
     private boolean suppressResultUpdate;
     private boolean returningInputs;
@@ -60,6 +61,16 @@ final class PolymerCraftingTableGui extends SimpleGui {
             }
         }
     };
+
+    private record LoadedRecipeState(Identifier recipeId, int crafts, List<ItemStack> grid) {
+    }
+
+    private record AppendCraftResult(
+            boolean handled,
+            Identifier skipRecipeId,
+            boolean inventorySpaceBlocked
+    ) {
+    }
 
     PolymerCraftingTableGui(ServerPlayer player, BlockPos pos) {
         super(MenuType.GENERIC_9x6, player, false);
@@ -183,10 +194,20 @@ final class PolymerCraftingTableGui extends SimpleGui {
         List<ItemStack> inventoryBefore = this.inventorySnapshot();
         List<ItemStack> gridBefore = this.inputSnapshot();
 
+        Identifier skipRecipeId = null;
+        boolean inventorySpaceBlocked = false;
+        if (!fillMultiple) {
+            AppendCraftResult appendAttempt = this.tryAddOneCraft(recent, inventoryBefore, gridBefore);
+            if (appendAttempt.handled()) {
+                return;
+            }
+            skipRecipeId = appendAttempt.skipRecipeId();
+            inventorySpaceBlocked = appendAttempt.inventorySpaceBlocked();
+        }
+
         PolydexMenu.RecipeCandidate selected = null;
         RecipeAutofill.Plan selectedPlan = null;
-        boolean inventorySpaceBlocked = false;
-        for (PolydexMenu.RecipeCandidate candidate : this.orderedCandidates(recent)) {
+        for (PolydexMenu.RecipeCandidate candidate : this.orderedCandidates(recent, skipRecipeId)) {
             RecipeAutofill.PlanResult attempt = fillMultiple
                     ? RecipeAutofill.planMaximum(
                             candidate.recipe(), inventoryBefore, gridBefore,
@@ -208,19 +229,93 @@ final class PolymerCraftingTableGui extends SimpleGui {
         }
 
         if (selected == null || selectedPlan == null) {
-            this.player.sendOverlayMessage(Component.literal(inventorySpaceBlocked
+            String message = inventorySpaceBlocked
                     ? "Make room in your inventory before switching recipes."
-                    : "No complete recipe matches the grid and inventory."));
+                    : skipRecipeId != null
+                    ? "No additional ingredients are available for another craft."
+                    : "No complete recipe matches the grid and inventory.";
+            this.player.sendOverlayMessage(Component.literal(message));
             return;
         }
 
+        if (!this.commitAutofillPlan(inventoryBefore, gridBefore, selectedPlan)) {
+            return;
+        }
+
+        this.rememberRecipeChoice(recent, selected);
+        this.rememberLoadedRecipe(recent, selected, selectedPlan);
+        this.updateResult();
+        this.player.sendOverlayMessage(Component.literal(
+                fillMultiple
+                        ? "Filled recipe " + selected.id() + " for " + selectedPlan.crafts() + " crafts."
+                        : "Filled recipe " + selected.id() + "."
+        ));
+    }
+
+    private AppendCraftResult tryAddOneCraft(
+            PolydexMenu.RecentRecipe recent,
+            List<ItemStack> inventoryBefore,
+            List<ItemStack> gridBefore
+    ) {
+        LoadedRecipeState loaded = this.sessionLoadedRecipes.get(recent.entryId());
+        if (loaded == null) {
+            return new AppendCraftResult(false, null, false);
+        }
+        if (!this.inputMatches(loaded.grid())) {
+            this.sessionLoadedRecipes.remove(recent.entryId());
+            return new AppendCraftResult(false, null, false);
+        }
+
+        PolydexMenu.RecipeCandidate candidate = recent.recipes().stream()
+                .filter(recipe -> recipe.id().equals(loaded.recipeId()))
+                .findFirst()
+                .orElse(null);
+        if (candidate == null) {
+            this.sessionLoadedRecipes.remove(recent.entryId());
+            return new AppendCraftResult(false, null, false);
+        }
+
+        RecipeAutofill.PlanResult attempt = RecipeAutofill.planCraftCount(
+                candidate.recipe(),
+                inventoryBefore,
+                gridBefore,
+                loaded.crafts() + 1,
+                this.player.getInventory().getMaxStackSize()
+        );
+        if (!attempt.succeeded()
+                || !candidate.recipe().matches(craftingInput(attempt.plan().grid()), this.player.level())) {
+            return new AppendCraftResult(
+                    false,
+                    candidate.id(),
+                    attempt.failure() == RecipeAutofill.Failure.NO_INVENTORY_SPACE
+            );
+        }
+
+        if (!this.commitAutofillPlan(inventoryBefore, gridBefore, attempt.plan())) {
+            return new AppendCraftResult(true, null, false);
+        }
+
+        this.rememberRecipeChoice(recent, candidate);
+        this.rememberLoadedRecipe(recent, candidate, attempt.plan());
+        this.updateResult();
+        this.player.sendOverlayMessage(Component.literal(
+                "Added ingredients for another craft (" + attempt.plan().crafts() + " loaded)."
+        ));
+        return new AppendCraftResult(true, null, false);
+    }
+
+    private boolean commitAutofillPlan(
+            List<ItemStack> inventoryBefore,
+            List<ItemStack> gridBefore,
+            RecipeAutofill.Plan plan
+    ) {
         var inventory = this.player.getInventory();
         if (!this.inventoryMatches(inventoryBefore) || !this.inputMatches(gridBefore)) {
             this.updateResult();
             this.player.sendOverlayMessage(Component.literal(
                     "Your grid or inventory changed. Try autofilling again."
             ));
-            return;
+            return false;
         }
 
         boolean wasSuppressed = this.suppressResultUpdate;
@@ -228,12 +323,12 @@ final class PolymerCraftingTableGui extends SimpleGui {
         this.suppressResultUpdate = true;
         try {
             for (int slot = 0; slot < 9; slot++) {
-                this.input.setItem(slot, selectedPlan.grid().get(slot).copy());
+                this.input.setItem(slot, plan.grid().get(slot).copy());
             }
             for (int slot = 0; slot < 36; slot++) {
-                inventory.setItem(slot, selectedPlan.inventory().get(slot).copy());
+                inventory.setItem(slot, plan.inventory().get(slot).copy());
             }
-            if (!this.inputMatches(selectedPlan.grid()) || !this.inventoryMatches(selectedPlan.inventory())) {
+            if (!this.inputMatches(plan.grid()) || !this.inventoryMatches(plan.inventory())) {
                 throw new IllegalStateException("Crafting input replacement did not match its plan.");
             }
         } catch (RuntimeException exception) {
@@ -253,19 +348,29 @@ final class PolymerCraftingTableGui extends SimpleGui {
             this.player.sendOverlayMessage(Component.literal(
                     "The recipe could not be placed safely. No ingredients were consumed."
             ));
-            return;
         }
+        return committed;
+    }
 
-        this.rememberRecipeChoice(recent, selected);
-        this.updateResult();
-        this.player.sendOverlayMessage(Component.literal(
-                fillMultiple
-                        ? "Filled recipe " + selected.id() + " for " + selectedPlan.crafts() + " crafts."
-                        : "Filled recipe " + selected.id() + "."
-        ));
+    private void rememberLoadedRecipe(
+            PolydexMenu.RecentRecipe recent,
+            PolydexMenu.RecipeCandidate selected,
+            RecipeAutofill.Plan plan
+    ) {
+        this.sessionLoadedRecipes.put(
+                recent.entryId(),
+                new LoadedRecipeState(selected.id(), plan.crafts(), copyStacks(plan.grid()))
+        );
     }
 
     private List<PolydexMenu.RecipeCandidate> orderedCandidates(PolydexMenu.RecentRecipe recent) {
+        return this.orderedCandidates(recent, null);
+    }
+
+    private List<PolydexMenu.RecipeCandidate> orderedCandidates(
+            PolydexMenu.RecentRecipe recent,
+            Identifier skipRecipeId
+    ) {
         Identifier previousRecipeId = this.sessionLastFilledRecipes.get(recent.entryId());
         boolean advanceAfterPrevious = previousRecipeId != null;
         if (previousRecipeId == null) {
@@ -288,7 +393,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
         List<PolydexMenu.RecipeCandidate> ordered = new ArrayList<>(orderedIds.size());
         for (Identifier id : orderedIds) {
             PolydexMenu.RecipeCandidate candidate = candidatesById.get(id);
-            if (candidate != null) {
+            if (candidate != null && !candidate.id().equals(skipRecipeId)) {
                 ordered.add(candidate);
             }
         }

@@ -96,6 +96,23 @@ final class RecipeAutofill {
         );
     }
 
+    static PlanResult planCraftCount(
+            CraftingRecipe recipe,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int crafts,
+            int inventoryStackLimit
+    ) {
+        if (!supports(recipe)
+                || inventory.size() < INVENTORY_SIZE
+                || grid.size() != GRID_SIZE) {
+            return new PlanResult(null, Failure.UNSUPPORTED);
+        }
+        return planRepeatedRequirements(
+                requirements(recipe), inventory, grid, crafts, inventoryStackLimit
+        );
+    }
+
     private static List<PlacementRequirement> requirements(CraftingRecipe recipe) {
         List<PlacementRequirement> requirements = new ArrayList<>();
         if (recipe instanceof ShapedRecipe shaped) {
