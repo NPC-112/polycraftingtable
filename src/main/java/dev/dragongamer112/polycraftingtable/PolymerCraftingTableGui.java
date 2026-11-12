@@ -65,6 +65,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
         super(MenuType.GENERIC_9x6, player, false);
         PolydexReturnSession.cancel(player);
         this.pos = pos.immutable();
+        this.instantCraftingEnabled = player.getAttachedOrElse(
+                PolyCraftingTableMod.INSTANT_CRAFTING_ENABLED,
+                false
+        );
         this.setTitle(ExtendedGui.formatTexturedText(
                 player,
                 PageTextures.CRAFTING,
@@ -91,7 +95,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
                 .setCallback(() -> PolyCraftingTableMod.openPolydexMenu(this.player, this.pos))
                 .build());
         this.updateInstantCraftingButton();
-        this.setSlot(CLEAR_GRID_SLOT, this.buttonBuilder(Items.STRUCTURE_VOID, "clear_button")
+        this.setSlot(CLEAR_GRID_SLOT, this.buttonBuilder(Items.BUCKET, "clear_button")
                 .setName(Component.literal("Clear Crafting Grid"))
                 .hideDefaultTooltip()
                 .setCallback((index, clickType, action, gui) -> {
@@ -161,6 +165,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
                         return;
                     }
                     this.instantCraftingEnabled = !this.instantCraftingEnabled;
+                    this.player.setAttached(
+                            PolyCraftingTableMod.INSTANT_CRAFTING_ENABLED,
+                            this.instantCraftingEnabled
+                    );
                     this.updateInstantCraftingButton();
                     GuiUtils.playClickSound(this.player);
                 })

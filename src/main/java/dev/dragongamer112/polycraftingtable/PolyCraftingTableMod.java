@@ -49,6 +49,10 @@ public final class PolyCraftingTableMod implements ModInitializer {
             Identifier.fromNamespaceAndPath(MOD_ID, "last_filled_recipe_ids"),
             Codec.unboundedMap(Codec.STRING, Codec.STRING)
     );
+    static final AttachmentType<Boolean> INSTANT_CRAFTING_ENABLED = AttachmentRegistry.createPersistent(
+            Identifier.fromNamespaceAndPath(MOD_ID, "instant_crafting_enabled"),
+            Codec.BOOL
+    );
     public static final Block TABLE = Registry.register(
             BuiltInRegistries.BLOCK,
             TABLE_ID,
