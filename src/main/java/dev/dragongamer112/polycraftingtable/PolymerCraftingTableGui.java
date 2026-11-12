@@ -134,10 +134,10 @@ final class PolymerCraftingTableGui extends SimpleGui {
     }
 
     private static Identifier buttonModel(String name) {
-        return Identifier.fromNamespaceAndPath(
+        return ResourcePackExtras.bridgeModel(Identifier.fromNamespaceAndPath(
                 PolyCraftingTableMod.MOD_ID,
                 "sgui/elements/" + name
-        );
+        ));
     }
 
     private GuiElementBuilder buttonBuilder(Item item, String model) {

@@ -22,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import com.mojang.serialization.Codec;
 import eu.pb4.polymer.core.api.item.PolymerBlockItem;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
+import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,9 @@ public final class PolyCraftingTableMod implements ModInitializer {
         CraftingRestrictions.initialize();
         PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);
+        ResourcePackExtras.forDefault().addBridgedModelsFolder(
+                Identifier.fromNamespaceAndPath(MOD_ID, "sgui/elements")
+        );
         // Use ITEM_NAME, not CUSTOM_NAME: anvil names must still take precedence.
         // The fallback also works on vanilla clients without our language file.
         DefaultItemComponentEvents.MODIFY.register(context -> context.modify(

@@ -1,7 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "polycraftingtable:sgui/elements/button_background",
-    "layer1": "polydex:sgui/elements/back"
+    "layer0": "polydex:sgui/elements/back"
   }
 }
