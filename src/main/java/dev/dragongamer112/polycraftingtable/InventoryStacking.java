@@ -16,11 +16,19 @@ final class InventoryStacking {
      * not fit. The caller owns the simulation and can discard it on failure.
      */
     static boolean insert(List<ItemStack> inventory, ItemStack stack, int inventoryStackLimit) {
+        return insertPartial(inventory, stack, inventoryStackLimit).isEmpty();
+    }
+
+    /**
+     * Inserts as much as possible and returns the uninserted remainder.
+     * The inventory is expected to be a simulation that can be committed by the caller.
+     */
+    static ItemStack insertPartial(List<ItemStack> inventory, ItemStack stack, int inventoryStackLimit) {
         if (stack.isEmpty()) {
-            return true;
+            return ItemStack.EMPTY;
         }
         if (inventoryStackLimit < 1) {
-            return false;
+            return stack.copy();
         }
 
         ItemStack remaining = stack.copy();
@@ -37,7 +45,7 @@ final class InventoryStacking {
                     existing.grow(moved);
                     remaining.shrink(moved);
                     if (remaining.isEmpty()) {
-                        return true;
+                        return ItemStack.EMPTY;
                     }
                 }
             }
@@ -53,6 +61,6 @@ final class InventoryStacking {
             inventory.set(slot, inserted);
             remaining.shrink(moved);
         }
-        return remaining.isEmpty();
+        return remaining.isEmpty() ? ItemStack.EMPTY : remaining;
     }
 }

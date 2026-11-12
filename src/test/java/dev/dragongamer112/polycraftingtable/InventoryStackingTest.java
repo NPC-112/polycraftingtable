@@ -45,6 +45,35 @@ final class InventoryStackingTest {
         assertEquals(16, inventory.get(0).getCount());
     }
 
+    @Test
+    void partialInsertionReturnsItemsThatDoNotFit() {
+        List<ItemStack> inventory = new ArrayList<>(List.of(
+                new ItemStack(Items.OAK_PLANKS, 15),
+                new ItemStack(Items.COBBLESTONE, 64)
+        ));
+
+        ItemStack remainder = InventoryStacking.insertPartial(
+                inventory, new ItemStack(Items.OAK_PLANKS, 5), 16
+        );
+
+        assertEquals(16, inventory.get(0).getCount());
+        assertEquals(4, remainder.getCount());
+        assertTrue(remainder.is(Items.OAK_PLANKS));
+    }
+
+    @Test
+    void partialInsertionUsesEveryAvailableEmptySlot() {
+        List<ItemStack> inventory = emptyStacks(2);
+
+        ItemStack remainder = InventoryStacking.insertPartial(
+                inventory, new ItemStack(Items.OAK_PLANKS, 40), 16
+        );
+
+        assertEquals(16, inventory.get(0).getCount());
+        assertEquals(16, inventory.get(1).getCount());
+        assertEquals(8, remainder.getCount());
+    }
+
     private static List<ItemStack> emptyStacks(int size) {
         return new ArrayList<>(Collections.nCopies(size, ItemStack.EMPTY));
     }

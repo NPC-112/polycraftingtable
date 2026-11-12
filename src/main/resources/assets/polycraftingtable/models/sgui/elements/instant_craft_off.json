@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "polycraftingtable:sgui/elements/button_background",
+    "layer1": "minecraft:item/magma_cream"
+  }
+}
