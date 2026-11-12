@@ -115,15 +115,15 @@ final class RecipeAutofillTest {
     @Test
     void repeatedClickAddsOneMoreCraftUsingTheLoadedGridAndInventory() {
         List<ItemStack> inventory = emptyStacks(36);
-        inventory.set(0, new ItemStack(Items.OAK_LOG, 4));
+        inventory.set(0, new ItemStack(Items.OAK_PLANKS, 4));
         List<ItemStack> grid = emptyStacks(9);
-        grid.set(0, new ItemStack(Items.OAK_LOG, 1));
-        var oneLogRecipe = List.of(
-                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_LOG))
+        grid.set(0, new ItemStack(Items.OAK_PLANKS, 1));
+        var singleItemRecipe = List.of(
+                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_PLANKS))
         );
 
         var result = RecipeAutofill.planRepeatedRequirements(
-                oneLogRecipe, inventory, grid, 2);
+                singleItemRecipe, inventory, grid, 2);
 
         assertTrue(result.succeeded());
         assertEquals(2, result.plan().crafts());
@@ -137,13 +137,13 @@ final class RecipeAutofillTest {
     void repeatedClickLeavesLoadedCraftAndInventoryUntouchedWithoutAnotherIngredient() {
         List<ItemStack> inventory = emptyStacks(36);
         List<ItemStack> grid = emptyStacks(9);
-        grid.set(0, new ItemStack(Items.OAK_LOG, 1));
-        var oneLogRecipe = List.of(
-                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_LOG))
+        grid.set(0, new ItemStack(Items.OAK_PLANKS, 1));
+        var singleItemRecipe = List.of(
+                new RecipeAutofill.PlacementRequirement(0, stack -> stack.is(Items.OAK_PLANKS))
         );
 
         var result = RecipeAutofill.planRepeatedRequirements(
-                oneLogRecipe, inventory, grid, 2);
+                singleItemRecipe, inventory, grid, 2);
 
         assertEquals(RecipeAutofill.Failure.MISSING_INGREDIENTS, result.failure());
         assertEquals(1, grid.get(0).getCount());
