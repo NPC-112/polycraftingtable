@@ -47,6 +47,15 @@ final class RecipeAutofill {
     }
 
     static PlanResult plan(CraftingRecipe recipe, List<ItemStack> inventory, List<ItemStack> grid) {
+        return plan(recipe, inventory, grid, InventoryStacking.DEFAULT_PLAYER_STACK_LIMIT);
+    }
+
+    static PlanResult plan(
+            CraftingRecipe recipe,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int inventoryStackLimit
+    ) {
         if (!supports(recipe)) {
             return new PlanResult(null, Failure.UNSUPPORTED);
         }
@@ -58,7 +67,7 @@ final class RecipeAutofill {
         if (requirements.isEmpty()) {
             return new PlanResult(null, Failure.UNSUPPORTED);
         }
-        return planRequirements(requirements, inventory, grid);
+        return planRequirements(requirements, inventory, grid, inventoryStackLimit);
     }
 
     static PlanResult planMaximum(
@@ -66,12 +75,25 @@ final class RecipeAutofill {
             List<ItemStack> inventory,
             List<ItemStack> grid
     ) {
+        return planMaximum(
+                recipe, inventory, grid, InventoryStacking.DEFAULT_PLAYER_STACK_LIMIT
+        );
+    }
+
+    static PlanResult planMaximum(
+            CraftingRecipe recipe,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int inventoryStackLimit
+    ) {
         if (!supports(recipe)
                 || inventory.size() < INVENTORY_SIZE
                 || grid.size() != GRID_SIZE) {
             return new PlanResult(null, Failure.UNSUPPORTED);
         }
-        return planMaximumRequirements(requirements(recipe), inventory, grid);
+        return planMaximumRequirements(
+                requirements(recipe), inventory, grid, inventoryStackLimit
+        );
     }
 
     private static List<PlacementRequirement> requirements(CraftingRecipe recipe) {
@@ -115,10 +137,22 @@ final class RecipeAutofill {
             List<ItemStack> inventory,
             List<ItemStack> grid
     ) {
+        return planMaximumRequirements(
+                requirements, inventory, grid, InventoryStacking.DEFAULT_PLAYER_STACK_LIMIT
+        );
+    }
+
+    static PlanResult planMaximumRequirements(
+            List<PlacementRequirement> requirements,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int inventoryStackLimit
+    ) {
         if (requirements.isEmpty()
                 || requirements.size() > GRID_SIZE
                 || inventory.size() < INVENTORY_SIZE
                 || grid.size() != GRID_SIZE
+                || inventoryStackLimit < 1
                 || requirements.stream().map(PlacementRequirement::gridSlot).distinct().count()
                 != requirements.size()) {
             return new PlanResult(null, Failure.UNSUPPORTED);
@@ -143,7 +177,9 @@ final class RecipeAutofill {
 
         boolean sawInventorySpaceFailure = false;
         for (int crafts = upperBound; crafts >= 1; crafts--) {
-            PlanResult attempt = planRepeatedRequirements(requirements, inventory, grid, crafts);
+            PlanResult attempt = planRepeatedRequirements(
+                    requirements, inventory, grid, crafts, inventoryStackLimit
+            );
             if (attempt.succeeded()) {
                 return attempt;
             }
@@ -160,10 +196,23 @@ final class RecipeAutofill {
             List<ItemStack> grid,
             int crafts
     ) {
+        return planRepeatedRequirements(
+                requirements, inventory, grid, crafts, InventoryStacking.DEFAULT_PLAYER_STACK_LIMIT
+        );
+    }
+
+    static PlanResult planRepeatedRequirements(
+            List<PlacementRequirement> requirements,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int crafts,
+            int inventoryStackLimit
+    ) {
         if (requirements.isEmpty()
                 || requirements.size() > GRID_SIZE
                 || inventory.size() < INVENTORY_SIZE
                 || grid.size() != GRID_SIZE
+                || inventoryStackLimit < 1
                 || crafts < 1
                 || requirements.stream().map(PlacementRequirement::gridSlot).anyMatch(slot ->
                 slot < 0 || slot >= GRID_SIZE)
@@ -203,7 +252,7 @@ final class RecipeAutofill {
         SearchState state = new SearchState();
         PlanResult plan = findRepeatedAssignment(
                 0, order, candidateGroups, requirements, groups, remaining, assignment,
-                inventory, grid, crafts, state
+                inventory, grid, crafts, inventoryStackLimit, state
         );
         if (plan != null) {
             return plan;
@@ -224,11 +273,12 @@ final class RecipeAutofill {
             List<ItemStack> inventory,
             List<ItemStack> grid,
             int crafts,
+            int inventoryStackLimit,
             SearchState state
     ) {
         if (depth == order.size()) {
             PlanResult result = buildRepeatedPlan(
-                    requirements, groups, assignment, inventory, grid, crafts
+                    requirements, groups, assignment, inventory, grid, crafts, inventoryStackLimit
             );
             state.sawInventorySpaceFailure |= result.failure() == Failure.NO_INVENTORY_SPACE;
             return result.succeeded() ? result : null;
@@ -243,7 +293,7 @@ final class RecipeAutofill {
             assignment[requirement] = groupIndex;
             PlanResult result = findRepeatedAssignment(
                     depth + 1, order, candidates, requirements, groups, remaining, assignment,
-                    inventory, grid, crafts, state
+                    inventory, grid, crafts, inventoryStackLimit, state
             );
             if (result != null) {
                 return result;
@@ -260,7 +310,8 @@ final class RecipeAutofill {
             int[] assignment,
             List<ItemStack> inventory,
             List<ItemStack> grid,
-            int crafts
+            int crafts,
+            int inventoryStackLimit
     ) {
         int[] consumedByGroup = new int[groups.size()];
         List<ItemStack> plannedGrid = new ArrayList<>(GRID_SIZE);
@@ -307,7 +358,8 @@ final class RecipeAutofill {
         for (int slot = 0; slot < GRID_SIZE; slot++) {
             ItemStack leftover = grid.get(slot).copy();
             leftover.shrink(consumedBySource[INVENTORY_SIZE + slot]);
-            if (!leftover.isEmpty() && !insertIntoInventory(updatedInventory, leftover)) {
+            if (!leftover.isEmpty()
+                    && !InventoryStacking.insert(updatedInventory, leftover, inventoryStackLimit)) {
                 return new PlanResult(null, Failure.NO_INVENTORY_SPACE);
             }
         }
@@ -349,8 +401,20 @@ final class RecipeAutofill {
             List<ItemStack> inventory,
             List<ItemStack> grid
     ) {
+        return planRequirements(
+                requirements, inventory, grid, InventoryStacking.DEFAULT_PLAYER_STACK_LIMIT
+        );
+    }
+
+    static PlanResult planRequirements(
+            List<PlacementRequirement> requirements,
+            List<ItemStack> inventory,
+            List<ItemStack> grid,
+            int inventoryStackLimit
+    ) {
         if (requirements.isEmpty() || requirements.size() > GRID_SIZE
-                || inventory.size() < INVENTORY_SIZE || grid.size() != GRID_SIZE) {
+                || inventory.size() < INVENTORY_SIZE || grid.size() != GRID_SIZE
+                || inventoryStackLimit < 1) {
             return new PlanResult(null, Failure.UNSUPPORTED);
         }
 
@@ -441,7 +505,8 @@ final class RecipeAutofill {
             ItemStack source = sources.get(INVENTORY_SIZE + slot);
             ItemStack remaining = source.copy();
             remaining.shrink(consumedBySource[INVENTORY_SIZE + slot]);
-            if (!remaining.isEmpty() && !insertIntoInventory(updatedInventory, remaining)) {
+            if (!remaining.isEmpty()
+                    && !InventoryStacking.insert(updatedInventory, remaining, inventoryStackLimit)) {
                 return new PlanResult(null, Failure.NO_INVENTORY_SPACE);
             }
         }
@@ -449,40 +514,6 @@ final class RecipeAutofill {
         return new PlanResult(new Plan(List.copyOf(plannedGrid), List.copyOf(updatedInventory),
                 requirements.size(), 1),
                 Failure.NONE);
-    }
-
-    private static boolean insertIntoInventory(List<ItemStack> inventory, ItemStack stack) {
-        ItemStack remaining = stack.copy();
-
-        for (int slot = 0; slot < inventory.size() && !remaining.isEmpty(); slot++) {
-            ItemStack existing = inventory.get(slot);
-            if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, remaining)) {
-                continue;
-            }
-
-            int capacity = Math.max(0, existing.getMaxStackSize() - existing.getCount());
-            int moved = Math.min(capacity, remaining.getCount());
-            if (moved > 0) {
-                ItemStack merged = existing.copy();
-                merged.grow(moved);
-                inventory.set(slot, merged);
-                remaining.shrink(moved);
-            }
-        }
-
-        for (int slot = 0; slot < inventory.size() && !remaining.isEmpty(); slot++) {
-            if (!inventory.get(slot).isEmpty()) {
-                continue;
-            }
-
-            int moved = Math.min(remaining.getMaxStackSize(), remaining.getCount());
-            ItemStack placed = remaining.copy();
-            placed.setCount(moved);
-            inventory.set(slot, placed);
-            remaining.shrink(moved);
-        }
-
-        return remaining.isEmpty();
     }
 
     private static boolean tryAssign(

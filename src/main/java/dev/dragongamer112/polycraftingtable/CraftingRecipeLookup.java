@@ -22,8 +22,11 @@ final class CraftingRecipeLookup {
         var recipes = ((RecipeManagerAccessor) manager)
                 .polycraftingtable$getRecipes()
                 .byType(RecipeType.CRAFTING);
-        return recipes.stream()
-                .filter(holder -> holder.value().matches(input, level))
-                .findFirst();
+        for (RecipeHolder<CraftingRecipe> holder : recipes) {
+            if (holder.value().matches(input, level)) {
+                return Optional.of(holder);
+            }
+        }
+        return Optional.empty();
     }
 }

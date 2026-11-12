@@ -2,10 +2,6 @@ package dev.dragongamer112.polycraftingtable;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.core.component.DataComponents;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -20,15 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class RecipeAutofillTest {
     @BeforeAll
     static void bootstrapMinecraft() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        // In 26.3 registry bootstrap does not bind item component defaults.
-        // These planner fixtures only require the vanilla stack-size component;
-        // no world, data-pack load, or GameTest server is needed.
-        var components = DataComponentMap.builder().set(DataComponents.MAX_STACK_SIZE, 64).build();
-        for (var item : List.of(Items.OAK_PLANKS, Items.GLASS, Items.COBBLESTONE)) {
-            item.builtInRegistryHolder().bindComponents(components);
-        }
+        MinecraftTestBootstrap.initialize();
     }
 
     @Test
