@@ -2,6 +2,7 @@ package dev.dragongamer112.polycraftingtable;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.core.component.DataComponents;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -60,17 +61,18 @@ final class CraftingBatchPlannerTest {
         List<ItemStack> grid = twoIngredientGrid(3);
         List<ItemStack> inventory = filledInventory();
         inventory.set(0, ItemStack.EMPTY);
+        ItemStack initialOutput = smallStack(Items.GLASS);
 
         var result = CraftingBatchPlanner.plan(
-                grid, inventory, 64, new ItemStack(Items.GLASS), operations(
-                        ignored -> new ItemStack(Items.GLASS), ignored -> List.of()
+                grid, inventory, 64, initialOutput, operations(
+                        ignored -> smallStack(Items.GLASS), ignored -> List.of()
                 )
         );
 
         assertTrue(result.succeeded());
-        assertEquals(1, result.plan().crafts().size());
-        assertTrue(result.plan().inventory().get(0).is(Items.GLASS));
-        assertEquals(2, result.plan().grid().get(0).getCount());
+        assertEquals(2, result.plan().crafts().size());
+        assertEquals(2, result.plan().inventory().get(0).getCount());
+        assertEquals(1, result.plan().grid().get(0).getCount());
         assertEquals(3, grid.get(0).getCount());
     }
 
@@ -157,6 +159,12 @@ final class CraftingBatchPlannerTest {
         grid.set(0, new ItemStack(Items.OAK_PLANKS, count));
         grid.set(1, new ItemStack(Items.OAK_PLANKS, count));
         return grid;
+    }
+
+    private static ItemStack smallStack(net.minecraft.world.item.Item item) {
+        ItemStack stack = new ItemStack(item);
+        stack.set(DataComponents.MAX_STACK_SIZE, 2);
+        return stack;
     }
 
     private static List<ItemStack> filledInventory() {
