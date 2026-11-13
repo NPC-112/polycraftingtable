@@ -74,6 +74,25 @@ final class RecipeAutofillTest {
     }
 
     @Test
+    void instantCraftPlanCombinesGridAndInventoryIngredients() {
+        List<ItemStack> inventory = emptyStacks(36);
+        inventory.set(0, new ItemStack(Items.OAK_PLANKS, 1));
+        List<ItemStack> grid = emptyStacks(9);
+        grid.set(0, new ItemStack(Items.OAK_PLANKS, 1));
+        grid.set(1, new ItemStack(Items.OAK_PLANKS, 1));
+
+        RecipeAutofill.PlanResult result = RecipeAutofill.planRequirements(
+                twoPlankRequirements(), inventory, grid);
+
+        assertTrue(result.succeeded());
+        assertTrue(result.plan().grid().get(0).is(Items.OAK_PLANKS));
+        assertTrue(result.plan().grid().get(1).is(Items.OAK_PLANKS));
+        assertEquals(1, result.plan().inventory().get(0).getCount());
+        assertEquals(1, grid.get(0).getCount());
+        assertEquals(1, grid.get(1).getCount());
+    }
+
+    @Test
     void reusesGridVariantRatherThanRequiringAnExtraInventorySlot() {
         List<ItemStack> inventory = emptyStacks(36);
         for (int slot = 0; slot < inventory.size(); slot++) {

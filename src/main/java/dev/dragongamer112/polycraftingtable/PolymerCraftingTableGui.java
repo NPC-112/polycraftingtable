@@ -411,10 +411,6 @@ final class PolymerCraftingTableGui extends SimpleGui {
     private void instantCraftFromInventory(PolydexMenu.RecentRecipe recent) {
         List<ItemStack> inventoryBefore = this.inventorySnapshot();
         List<ItemStack> gridBefore = this.inputSnapshot();
-        List<ItemStack> emptyGrid = new ArrayList<>(9);
-        for (int slot = 0; slot < 9; slot++) {
-            emptyGrid.add(ItemStack.EMPTY);
-        }
 
         int inventoryStackLimit = this.player.getInventory().getMaxStackSize();
         PolydexMenu.RecipeCandidate selected = null;
@@ -425,7 +421,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
 
         for (PolydexMenu.RecipeCandidate candidate : this.orderedCandidates(recent)) {
             RecipeAutofill.PlanResult attempt = RecipeAutofill.plan(
-                    candidate.recipe(), inventoryBefore, emptyGrid, inventoryStackLimit
+                    candidate.recipe(), inventoryBefore, gridBefore, inventoryStackLimit
             );
             if (!attempt.succeeded()) {
                 inventorySpaceBlocked |= attempt.failure() == RecipeAutofill.Failure.NO_INVENTORY_SPACE;
@@ -474,7 +470,7 @@ final class PolymerCraftingTableGui extends SimpleGui {
         if (selected == null || selectedIngredients == null || selectedInventory == null) {
             this.player.sendOverlayMessage(Component.literal(inventorySpaceBlocked
                     ? "Make room in your inventory to craft this."
-                    : "No complete recipe matches your inventory."));
+                    : "No complete recipe matches the grid and inventory."));
             return;
         }
 
@@ -484,7 +480,12 @@ final class PolymerCraftingTableGui extends SimpleGui {
             ));
             return;
         }
-        if (!this.replaceInventory(inventoryBefore, selectedInventory)) {
+        if (!this.replaceCraftingState(
+                inventoryBefore,
+                gridBefore,
+                selectedInventory,
+                emptyGrid()
+        )) {
             this.player.sendOverlayMessage(Component.literal(
                     "The item could not be crafted safely. No ingredients were consumed."
             ));
@@ -514,24 +515,40 @@ final class PolymerCraftingTableGui extends SimpleGui {
         }
     }
 
-    private boolean replaceInventory(List<ItemStack> expected, List<ItemStack> replacement) {
-        if (!this.inventoryMatches(expected)) {
+    private boolean replaceCraftingState(
+            List<ItemStack> expectedInventory,
+            List<ItemStack> expectedGrid,
+            List<ItemStack> replacementInventory,
+            List<ItemStack> replacementGrid
+    ) {
+        if (!this.inventoryMatches(expectedInventory) || !this.inputMatches(expectedGrid)) {
             return false;
         }
 
+        boolean wasSuppressed = this.suppressResultUpdate;
         try {
+            this.suppressResultUpdate = true;
             for (int slot = 0; slot < 36; slot++) {
-                this.player.getInventory().setItem(slot, replacement.get(slot).copy());
+                this.player.getInventory().setItem(slot, replacementInventory.get(slot).copy());
             }
-            if (!this.inventoryMatches(replacement)) {
-                throw new IllegalStateException("Inventory replacement did not match its plan.");
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, replacementGrid.get(slot).copy());
+            }
+            if (!this.inventoryMatches(replacementInventory)
+                    || !this.inputMatches(replacementGrid)) {
+                throw new IllegalStateException("Crafting state replacement did not match its plan.");
             }
             return true;
         } catch (RuntimeException exception) {
+            for (int slot = 0; slot < 9; slot++) {
+                this.input.setItem(slot, expectedGrid.get(slot).copy());
+            }
             for (int slot = 0; slot < 36; slot++) {
-                this.player.getInventory().setItem(slot, expected.get(slot).copy());
+                this.player.getInventory().setItem(slot, expectedInventory.get(slot).copy());
             }
             return false;
+        } finally {
+            this.suppressResultUpdate = wasSuppressed;
         }
     }
 
@@ -607,6 +624,14 @@ final class PolymerCraftingTableGui extends SimpleGui {
             copies.add(stack.copy());
         }
         return copies;
+    }
+
+    private static List<ItemStack> emptyGrid() {
+        List<ItemStack> grid = new ArrayList<>(9);
+        for (int slot = 0; slot < 9; slot++) {
+            grid.add(ItemStack.EMPTY);
+        }
+        return grid;
     }
 
     private void openRecentEntryInPolydex(PolydexEntry entry) {
