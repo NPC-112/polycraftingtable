@@ -65,7 +65,8 @@ check("hasTexturedTableAppearance(context)" in item
       and ": null" in item,
       "the item icon also falls back when the pack is not accepted")
 check("polymer-blocks" in metadata.get("depends", {})
-      and 'modImplementation include("eu.pb4:polymer-blocks:${project.polymer_version}")' in build,
+      and 'compileOnly "eu.pb4:polymer-blocks:${project.polymer_version}"' in build
+      and 'include "eu.pb4:polymer-blocks:${project.polymer_version}"' in build,
       "the matching Polymer Blocks module is bundled and declared")
 check("must accept the pack" in readme
       and "vanilla crafting-table appearance" in readme,

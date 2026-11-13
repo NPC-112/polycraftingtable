@@ -29,7 +29,8 @@ dependencies {
     compileOnly "eu.pb4:polymer-core:${project.polymer_version}"
     compileOnly "eu.pb4:polymer-resource-pack:${project.polymer_version}"
     compileOnly "eu.pb4:polymer-resource-pack-extras:${project.polymer_version}"
-    modImplementation include("eu.pb4:polymer-blocks:${project.polymer_version}")
+    compileOnly "eu.pb4:polymer-blocks:${project.polymer_version}"
+    include "eu.pb4:polymer-blocks:${project.polymer_version}"
     compileOnly "eu.pb4:sgui:${project.sgui_version}"
     compileOnly "maven.modrinth:polydex:${project.polydex_version}"
 
