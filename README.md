@@ -1,4 +1,4 @@
-# PolyCraftingTable
+<h1><img src="src/main/resources/assets/polycraftingtable/textures/block/polymer_crafting_table_top.png" alt="Polymer Crafting Table top texture" width="48" height="48" align="middle" /> PolyCraftingTable</h1>
 
 This mod restricts configured crafting recipes from vanilla crafting and its recipe book and adds a new crafting table with extended features.
 The custom crafting table and Polydex retain access to every registered crafting recipe.
