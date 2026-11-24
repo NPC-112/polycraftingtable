@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "polycraftingtable:block/polymer_crafting_table_side",
+    "down": "polycraftingtable:block/polymer_crafting_table_bottom",
+    "up": "polycraftingtable:block/polymer_crafting_table_top",
+    "north": "polycraftingtable:block/polymer_crafting_table_side",
+    "south": "polycraftingtable:block/polymer_crafting_table_side",
+    "east": "polycraftingtable:block/polymer_crafting_table_side",
+    "west": "polycraftingtable:block/polymer_crafting_table_side"
+  }
+}

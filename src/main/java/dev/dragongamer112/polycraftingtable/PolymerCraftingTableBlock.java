@@ -1,6 +1,6 @@
 package dev.dragongamer112.polycraftingtable;
 
-import eu.pb4.polymer.core.api.block.PolymerBlock;
+import eu.pb4.polymer.blocks.api.PolymerTexturedBlock;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.MutableComponent;
@@ -9,12 +9,11 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
-public final class PolymerCraftingTableBlock extends Block implements PolymerBlock {
+public final class PolymerCraftingTableBlock extends Block implements PolymerTexturedBlock {
     public PolymerCraftingTableBlock(Properties properties) {
         super(properties);
     }
@@ -47,11 +46,11 @@ public final class PolymerCraftingTableBlock extends Block implements PolymerBlo
 
     @Override
     public BlockState getPolymerBlockState(BlockState state, @Nullable PacketContext context) {
-        return Blocks.CRAFTING_TABLE.defaultBlockState();
+        return PolyCraftingTableMod.clientTableBlockState(context);
     }
 
     @Override
     public BlockState getPolymerBreakEventBlockState(BlockState state, PacketContext context) {
-        return Blocks.CRAFTING_TABLE.defaultBlockState();
+        return PolyCraftingTableMod.clientTableBlockState(context);
     }
 }

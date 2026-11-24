@@ -12,20 +12,24 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerPlayer;
 import com.mojang.serialization.Codec;
-import eu.pb4.polymer.core.api.item.PolymerBlockItem;
+import eu.pb4.polymer.blocks.api.BlockModelType;
+import eu.pb4.polymer.blocks.api.PolymerBlockModel;
+import eu.pb4.polymer.blocks.api.PolymerBlockResourceUtils;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,10 @@ public final class PolyCraftingTableMod implements ModInitializer {
     public static final String MOD_ID = "polycraftingtable";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final Identifier TABLE_ID = Identifier.fromNamespaceAndPath(MOD_ID, "polymer_crafting_table");
+    static final Identifier TABLE_ITEM_MODEL_ID = Identifier.fromNamespaceAndPath(
+            MOD_ID, "polymer_crafting_table"
+    );
+    private static @Nullable BlockState TABLE_TEXTURED_STATE;
     static final Component TABLE_NAME = Component.translatableWithFallback(
             "block.polycraftingtable.polymer_crafting_table", "Polymer Crafting Table"
     );
@@ -64,10 +72,9 @@ public final class PolyCraftingTableMod implements ModInitializer {
     public static final Item TABLE_ITEM = Registry.register(
             BuiltInRegistries.ITEM,
             TABLE_ID,
-            new PolymerBlockItem(
+            new PolymerCraftingTableItem(
                     TABLE,
-                    new Item.Properties().setId(ResourceKey.create(Registries.ITEM, TABLE_ID)),
-                    Items.CRAFTING_TABLE
+                    new Item.Properties().setId(ResourceKey.create(Registries.ITEM, TABLE_ID))
             )
     );
     public static final Item POLYDEX_ITEM = Registry.register(
@@ -81,6 +88,17 @@ public final class PolyCraftingTableMod implements ModInitializer {
         CraftingRestrictions.initialize();
         PolydexReturnSession.register();
         PolymerResourcePackUtils.addModAssets(MOD_ID);
+        TABLE_TEXTURED_STATE = PolymerBlockResourceUtils.requestBlock(
+                BlockModelType.FULL_BLOCK,
+                PolymerBlockModel.of(Identifier.fromNamespaceAndPath(
+                        MOD_ID, "block/polymer_crafting_table"
+                ))
+        );
+        if (TABLE_TEXTURED_STATE == null) {
+            LOGGER.warn(
+                    "No Polymer full-block model state is available; using the vanilla crafting table appearance."
+            );
+        }
         ResourcePackExtras.forDefault().addBridgedModelsFolder(
                 Identifier.fromNamespaceAndPath(MOD_ID, "sgui/elements")
         );
@@ -108,5 +126,19 @@ public final class PolyCraftingTableMod implements ModInitializer {
 
     static void openPolydexFromHand(ServerPlayer player) {
         PolydexReturnSession.openFromHand(player);
+    }
+
+    static boolean hasTexturedTableAppearance(PacketContext context) {
+        return TABLE_TEXTURED_STATE != null && PolymerResourcePackUtils.hasMainPack(context);
+    }
+
+    static BlockState clientTableBlockState(@Nullable PacketContext context) {
+        BlockState texturedState = TABLE_TEXTURED_STATE;
+        if (context != null
+                && texturedState != null
+                && PolymerResourcePackUtils.hasMainPack(context)) {
+            return texturedState;
+        }
+        return Blocks.CRAFTING_TABLE.defaultBlockState();
     }
 }
