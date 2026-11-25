@@ -5,11 +5,11 @@ The custom crafting table and Polydex retain access to every registered crafting
 
 Was mainly made to reduce the chances of a player getting a recipe book packet being too larger error (io.netty.handler.codec.EncoderException: java.lang.IllegalArgumentException: Packet too big ). This error isn't exclusive to recipe book packets players may receive as they unlock recipes, but this is the most common for me.
 
-I am sorry this is vibecoded. Use at your own risk
-As such, there is no issues page. 
-Fork this repo and use Microsofts free AI in CodeSpaces to diagnose the issue, then have it apply the fixes. 
-Make a pull request.
-May or may not ever merge, I have notifications turned off.
+I am sorry this is vibecoded. Use at your own risk.
+- As such, there is no issues page. 
+- Fork this repo and use Microsofts free AI in CodeSpaces to diagnose the issue, then have it apply the fixes. 
+- Make a pull request.
+- May or may not ever merge, I have notifications turned off.
 
 Operators can get the new items with commands:
 
